@@ -1,0 +1,1291 @@
+{
+	"flashicon": "icons\/SmartMeter.png",
+	"default_icon": "SmartMeter.png",
+    "inScene": "1",
+    "ToggleButton": 1,
+	"Tabs": [
+		{
+			"Label": {
+				"lang_tag": "tabname_control",
+				"text": "Control"
+			},
+			"Position": "0",
+			"TabType": "flash",
+            "SceneGroup": [
+                {
+                    "id": "1",
+                    "top": "1",
+                    "left": "0",
+                    "x": "2",
+                    "y": "2"
+				}	
+            ],
+            "ControlGroup": [
+                {
+                    "id": "1",
+                    "type": "info",
+                    "scenegroup": "1"
+                }
+            ],
+            "Control": [
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "label",
+                    "top": 0,
+                    "left": 0,
+                    "text_align": "left",
+                    "Label": {
+                        "lang_tag": "meter_type",
+                        "text": "Meter:"
+                    },
+                    "Display": {
+                        "Top": 20,
+                        "Left": 10,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "variable",
+                    "top": 0,
+                    "left": 0.5,
+                    "text_align": "left",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "MeterType",
+                        "Top": 20,
+                        "Left": 100,
+                        "Width": 70,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "meter_number",
+                        "text": "Meter Number:"
+                    },
+                    "Display": {
+                        "Top": 20,
+                        "Left": 330,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "MeterNumber",
+                        "Top": 20,
+                        "Left": 420,
+                        "Width": 70,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "dsmr_version",
+                        "text": "DSMR Version:"
+                    },
+                    "Display": {
+                        "Top": 40,
+                        "Left": 10,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "DSMRVersion",
+                        "Top": 40,
+                        "Left": 100,
+                        "Width": 70,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "label",
+                    "top": 2,
+                    "left": 0,
+                    "text_align": "left",
+                    "Label": {
+                        "lang_tag": "Tariff",
+                        "text": "Tariff:"
+                    },
+                    "Display": {
+                        "Top": 60,
+                        "Left": 10,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "variable",
+                    "top": 2,
+                    "left": 0.5,
+                    "text_align": "left",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "ActiveTariff",
+                        "Top": 60,
+                        "Left": 100,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "Tariff",
+                        "text": "(1=low 2=High)"
+                    },
+                    "Display": {
+                        "Top": 60,
+                        "Left": 150,
+                        "Width": 50,
+                        "Height": 80
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "house",
+                        "text": "House:"
+                    },
+                    "Display": {
+                        "Top": 80,
+                        "Left": 10,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "House",
+                        "Top": 80,
+                        "Left": 100,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "kwh",
+                        "text": "KWH"
+                    },
+                    "Display": {
+                        "Top": 80,
+                        "Left": 150,
+                        "Width": 50,
+                        "Height": 80
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "importt1",
+                        "text": "T1; Import:"
+                    },
+                    "Display": {
+                        "Top": 100,
+                        "Left": 10,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "ImportT1",
+                        "Top": 100,
+                        "Left": 100,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "kwh",
+                        "text": "KWH"
+                    },
+                    "Display": {
+                        "Top": 100,
+                        "Left": 150,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "exportt1",
+                        "text": "Export:"
+                    },
+                    "Display": {
+                        "Top": 100,
+                        "Left": 200,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "ExportT1",
+                        "Top": 100,
+                        "Left": 250,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "kwh",
+                        "text": "KWH"
+                    },
+                    "Display": {
+                        "Top": 100,
+                        "Left": 300,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "importt2",
+                        "text": "T2; Import:"
+                    },
+                    "Display": {
+                        "Top": 120,
+                        "Left": 10,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "ImportT2",
+                        "Top": 120,
+                        "Left": 100,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "kwh",
+                        "text": "KWH"
+                    },
+                    "Display": {
+                        "Top": 120,
+                        "Left": 150,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "exportt2",
+                        "text": "Export:"
+                    },
+                    "Display": {
+                        "Top": 120,
+                        "Left": 200,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "ExportT2",
+                        "Top": 120,
+                        "Left": 250,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "kwh",
+                        "text": "KWH"
+                    },
+                    "Display": {
+                        "Top": 120,
+                        "Left": 300,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "line1v",
+                        "text": "Line 1;  Volts:"
+                    },
+                    "Display": {
+                        "Top": 140,
+                        "Left": 10,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "L1Volt",
+                        "Top": 140,
+                        "Left": 100,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "volts",
+                        "text": "V"
+                    },
+                    "Display": {
+                        "Top": 140,
+                        "Left": 150,
+                        "Width": 10,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "line1a",
+                        "text": "Amps:"
+                    },
+                    "Display": {
+                        "Top": 140,
+                        "Left": 200,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "L1Ampere",
+                        "Top": 140,
+                        "Left": 250,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "amps",
+                        "text": "A"
+                    },
+                    "Display": {
+                        "Top": 140,
+                        "Left": 300,
+                        "Width": 10,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "line1wi",
+                        "text": "Imp. Pwr:"
+                    },
+                    "Display": {
+                        "Top": 140,
+                        "Left": 330,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "L1ImpWatts",
+                        "Top": 140,
+                        "Left": 400,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "w",
+                        "text": "W"
+                    },
+                    "Display": {
+                        "Top": 140,
+                        "Left": 450,
+                        "Width": 10,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "line1we",
+                        "text": "Exp. Pwr:"
+                    },
+                    "Display": {
+                        "Top": 140,
+                        "Left": 470,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "L1ExpWatts",
+                        "Top": 140,
+                        "Left": 550,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "w",
+                        "text": "W"
+                    },
+                    "Display": {
+                        "Top": 140,
+                        "Left": 600,
+                        "Width": 10,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "line2v",
+                        "text": "Line 2;  Volts:"
+                    },
+                    "Display": {
+                        "Top": 160,
+                        "Left": 10,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "L2Volt",
+                        "Top": 160,
+                        "Left": 100,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "volts",
+                        "text": "V"
+                    },
+                    "Display": {
+                        "Top": 160,
+                        "Left": 150,
+                        "Width": 10,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "line2a",
+                        "text": "Amps:"
+                    },
+                    "Display": {
+                        "Top": 160,
+                        "Left": 200,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "L2Ampere",
+                        "Top": 160,
+                        "Left": 250,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "amps",
+                        "text": "A"
+                    },
+                    "Display": {
+                        "Top": 160,
+                        "Left": 300,
+                        "Width": 10,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "line2wi",
+                        "text": "Imp. Pwr:"
+                    },
+                    "Display": {
+                        "Top": 160,
+                        "Left": 330,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "L2ImpWatts",
+                        "Top": 160,
+                        "Left": 400,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "w",
+                        "text": "W"
+                    },
+                    "Display": {
+                        "Top": 160,
+                        "Left": 450,
+                        "Width": 10,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "line2we",
+                        "text": "Exp. Pwr:"
+                    },
+                    "Display": {
+                        "Top": 160,
+                        "Left": 470,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "L2ExpWatts",
+                        "Top": 160,
+                        "Left": 550,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "w",
+                        "text": "W"
+                    },
+                    "Display": {
+                        "Top": 160,
+                        "Left": 600,
+                        "Width": 10,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "line3v",
+                        "text": "Line 3;  Volts:"
+                    },
+                    "Display": {
+                        "Top": 180,
+                        "Left": 10,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "L3Volt",
+                        "Top": 180,
+                        "Left": 100,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "volts",
+                        "text": "V"
+                    },
+                    "Display": {
+                        "Top": 180,
+                        "Left": 150,
+                        "Width": 10,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "line3a",
+                        "text": "Amps:"
+                    },
+                    "Display": {
+                        "Top": 180,
+                        "Left": 200,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "L3Ampere",
+                        "Top": 180,
+                        "Left": 250,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "amps",
+                        "text": "A"
+                    },
+                    "Display": {
+                        "Top": 180,
+                        "Left": 300,
+                        "Width": 10,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "line3wi",
+                        "text": "Imp. Pwr:"
+                    },
+                    "Display": {
+                        "Top": 180,
+                        "Left": 330,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "L3ImpWatts",
+                        "Top": 180,
+                        "Left": 400,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "w",
+                        "text": "W"
+                    },
+                    "Display": {
+                        "Top": 180,
+                        "Left": 450,
+                        "Width": 10,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "line3we",
+                        "text": "Exp. Pwr:"
+                    },
+                    "Display": {
+                        "Top": 180,
+                        "Left": 470,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "L3ExpWatts",
+                        "Top": 180,
+                        "Left": 550,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "w",
+                        "text": "W"
+                    },
+                    "Display": {
+                        "Top": 180,
+                        "Left": 600,
+                        "Width": 10,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "importgas",
+                        "text": "Import Gas:"
+                    },
+                    "Display": {
+                        "Top": 200,
+                        "Left": 10,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "ImportGas",
+                        "Top": 200,
+                        "Left": 100,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "m3",
+                        "text": "M3"
+                    },
+                    "Display": {
+                        "Top": 200,
+                        "Left": 150,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "gas_meter_number",
+                        "text": "Meter Number:"
+                    },
+                    "Display": {
+                        "Top": 200,
+                        "Left": 330,
+                        "Width": 50,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:rboer-com:serviceId:SmartMeter1",
+                        "Variable": "GasMeterNumber",
+                        "Top": 200,
+                        "Left": 420,
+                        "Width": 70,
+                        "Height": 20
+                    }
+                }				
+            ]
+        },
+		{ 
+			"Label": { "lang_tag": "settings", "text": "Settings" }, 
+			"TopNavigationTab": 1, 
+			"Position": "1", 
+			"TabType": "javascript", 
+			"ScriptName": "J_SmartMeter.js", 
+			"Function": "SmartMeterSettings" 
+		},
+		{ 
+			"Label": { "lang_tag": "advanced", "text": "Advanced" },
+			"Position": "2",
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "advanced_device"
+		},
+		{ 
+			"Label": { "lang_tag": "logs", "text": "Logs" },
+			"Position": "3",
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "device_logs" 
+		},
+		{
+			"Label": { "lang_tag": "notifications", "text": "Notifications" },
+			"Position": "4",
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "device_notifications" 
+		} 
+	],
+    "eventList2": [
+        {
+            "id": 1,
+            "label": { "lang_tag": "active_tariff_change", "text": "Active Tariff changes to " },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "ActiveTarrif",
+					"allowedValueList": [
+						{ "value": "1", "HumanFriendlyText": { "lang_tag": "hft_active_tariff_low", "text": "Low" }},
+						{ "value": "2", "HumanFriendlyText": { "lang_tag": "hft_active_tariff_high", "text": "High" }}
+					],	
+                    "comparisson": "=",
+                    "prefix": {},
+                    "suffix": {}
+                }
+            ]
+        },
+        {
+            "id": 10,
+            "label": { "lang_tag": "line1_voltage_goes_above", "text": "Line 1 Voltage goes above" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L1Volt",
+                    "comparisson": ">",
+                    "prefix": "Volts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line1_voltage_goes_above", "text": "Whenever the line 1 voltage for _DEVICE_NAME_ goes above _ARGUMENT_VALUE_ Volts" }
+                }
+            ]
+        },
+        {
+            "id": 11,
+            "label": { "lang_tag": "line1_voltage_goes_below", "text": "Line 1 Voltage goes below" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L1Volt",
+                    "comparisson": "<",
+                    "prefix": "Volts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line1_voltage_goes_below", "text": "Whenever the line 1 voltage for _DEVICE_NAME_ goes below _ARGUMENT_VALUE_ Volts" }
+                }
+            ]
+        },
+        {
+            "id": 12,
+            "label": { "lang_tag": "line1_amperage_goes_above", "text": "Line 1 amperage goes above " },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L1Ampere",
+					"HumanFriendlyText": { "lang_tag": "hft_line1_amperage_goes_above", "text": "Whenever the line 1 amperage for _DEVICE_NAME_ goes above _ARGUMENT_VALUE_ Amps." },
+                    "comparisson": ">",
+                    "prefix": "Amps: ",
+                    "suffix": ""
+                }
+            ]
+        },
+        {
+            "id": 13,
+            "label": { "lang_tag": "line1_amperage_goes_below", "text": "Line 1 amperage goes below " },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L1Ampere",
+					"HumanFriendlyText": { "lang_tag": "hft_line1_amperage_goes_below", "text": "Whenever the line 1 amperage for _DEVICE_NAME_ goes below _ARGUMENT_VALUE_ Amps." },
+                    "comparisson": "<",
+                    "prefix": "Amps: ",
+                    "suffix": ""
+                }
+            ]
+        },
+        {
+            "id": 14,
+            "label": { "lang_tag": "line1_import_usage_goes_above", "text": "Line 1 import energy usage goes above" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L1ImpWatts",
+                    "comparisson": ">",
+                    "prefix": "Watts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line1_import_usage_goes_above", "text": "Whenever the line 1 import energy usage for _DEVICE_NAME_ goes above _ARGUMENT_VALUE_ Watts" }
+                }
+            ]
+        },
+        {
+            "id": 15,
+            "label": { "lang_tag": "line1_import_usage_goes_below", "text": "Line 1 import energy usage goes below" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L1ImpWatts",
+                    "comparisson": "<",
+                    "prefix": "Watts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line1_import_usage_goes_below", "text": "Whenever the line 1 import energy usage for _DEVICE_NAME_ goes below _ARGUMENT_VALUE_ Watts" }
+                }
+            ]
+        },
+        {
+            "id": 16,
+            "label": { "lang_tag": "line1_export_usage_goes_above", "text": "Line 1 export energy usage goes above" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L1ExpWatts",
+                    "comparisson": ">",
+                    "prefix": "Watts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line1_export_usage_goes_above", "text": "Whenever the line 1 export energy usage for _DEVICE_NAME_ goes above _ARGUMENT_VALUE_ Watts" }
+                }
+            ]
+        },
+        {
+            "id": 17,
+            "label": { "lang_tag": "line1_export_usage_goes_below", "text": "Line 1 export energy usage goes below" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L1ExpWatts",
+                    "comparisson": "<",
+                    "prefix": "Watts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line1_export_usage_goes_below", "text": "Whenever the line 1 export energy usage for _DEVICE_NAME_ goes below _ARGUMENT_VALUE_ Watts" }
+                }
+            ]
+        },
+        {
+            "id": 20,
+            "label": { "lang_tag": "line2_voltage_goes_above", "text": "Line 2 Voltage goes above" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L2Volt",
+                    "comparisson": ">",
+                    "prefix": "Volts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line2_voltage_goes_above", "text": "Whenever the line 2 voltage for _DEVICE_NAME_ goes above _ARGUMENT_VALUE_ Volts" }
+                }
+            ]
+        },
+        {
+            "id": 21,
+            "label": { "lang_tag": "line2_voltage_goes_below", "text": "Line 2 Voltage goes below" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L2Volt",
+                    "comparisson": "<",
+                    "prefix": "Volts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line2_voltage_goes_below", "text": "Whenever the line 2 voltage for _DEVICE_NAME_ goes below _ARGUMENT_VALUE_ Volts" }
+                }
+            ]
+        },
+        {
+            "id": 22,
+            "label": { "lang_tag": "line2_amperage_goes_above", "text": "Line 2 amperage goes above " },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L2Ampere",
+					"HumanFriendlyText": { "lang_tag": "hft_line2_amperage_goes_above", "text": "Whenever the line 2 amperage for _DEVICE_NAME_ goes above _ARGUMENT_VALUE_ Amps." },
+                    "comparisson": ">",
+                    "prefix": "Amps: ",
+                    "suffix": ""
+                }
+            ]
+        },
+        {
+            "id": 23,
+            "label": { "lang_tag": "line2_amperage_goes_below", "text": "Line 2 amperage goes below " },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L2Ampere",
+					"HumanFriendlyText": { "lang_tag": "hft_line2_amperage_goes_below", "text": "Whenever the line 2 amperage for _DEVICE_NAME_ goes below _ARGUMENT_VALUE_ Amps." },
+                    "comparisson": "<",
+                    "prefix": "Amps: ",
+                    "suffix": ""
+                }
+            ]
+        },
+        {
+            "id": 24,
+            "label": { "lang_tag": "line2_import_usage_goes_above", "text": "Line 2 import energy usage goes above" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L2ImpWatts",
+                    "comparisson": ">",
+                    "prefix": "Watts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line2_import_usage_goes_above", "text": "Whenever the line 2 import energy usage for _DEVICE_NAME_ goes above _ARGUMENT_VALUE_ Watts" }
+                }
+            ]
+        },
+        {
+            "id": 25,
+            "label": { "lang_tag": "line2_import_usage_goes_below", "text": "Line 2 import energy usage goes below" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L2ImpWatts",
+                    "comparisson": "<",
+                    "prefix": "Watts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line2_import_usage_goes_below", "text": "Whenever the line 2 import energy usage for _DEVICE_NAME_ goes below _ARGUMENT_VALUE_ Watts" }
+                }
+            ]
+        },
+        {
+            "id": 26,
+            "label": { "lang_tag": "line2_export_usage_goes_above", "text": "Line 2 export energy usage goes above" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L2ExpWatts",
+                    "comparisson": ">",
+                    "prefix": "Watts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line2_export_usage_goes_above", "text": "Whenever the line 2 export energy usage for _DEVICE_NAME_ goes above _ARGUMENT_VALUE_ Watts" }
+                }
+            ]
+        },
+        {
+            "id": 27,
+            "label": { "lang_tag": "line2_export_usage_goes_below", "text": "Line 2 export energy usage goes below" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L2ExpWatts",
+                    "comparisson": "<",
+                    "prefix": "Watts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line2_export_usage_goes_below", "text": "Whenever the line 2 export energy usage for _DEVICE_NAME_ goes below _ARGUMENT_VALUE_ Watts" }
+                }
+            ]
+        },
+        {
+            "id": 30,
+            "label": { "lang_tag": "line3_voltage_goes_above", "text": "Line 3 Voltage goes above" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L3Volt",
+                    "comparisson": ">",
+                    "prefix": "Volts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line3_voltage_goes_above", "text": "Whenever the line 3 voltage for _DEVICE_NAME_ goes above _ARGUMENT_VALUE_ Volts" }
+                }
+            ]
+        },
+        {
+            "id": 31,
+            "label": { "lang_tag": "line3_voltage_goes_below", "text": "Line 3 Voltage goes below" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L3Volt",
+                    "comparisson": "<",
+                    "prefix": "Volts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line3_voltage_goes_below", "text": "Whenever the line 3 voltage for _DEVICE_NAME_ goes below _ARGUMENT_VALUE_ Volts" }
+                }
+            ]
+        },
+        {
+            "id": 32,
+            "label": { "lang_tag": "line3_amperage_goes_above", "text": "Line 3 amperage goes above " },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L3Ampere",
+					"HumanFriendlyText": { "lang_tag": "hft_line3_amperage_goes_above", "text": "Whenever the line 3 amperage for _DEVICE_NAME_ goes above _ARGUMENT_VALUE_ Amps." },
+                    "comparisson": ">",
+                    "prefix": "Amps: ",
+                    "suffix": ""
+                }
+            ]
+        },
+        {
+            "id": 33,
+            "label": { "lang_tag": "line3_amperage_goes_below", "text": "Line 3 amperage goes below " },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L3Ampere",
+					"HumanFriendlyText": { "lang_tag": "hft_line3_amperage_goes_below", "text": "Whenever the line 3 amperage for _DEVICE_NAME_ goes below _ARGUMENT_VALUE_ Amps." },
+                    "comparisson": "<",
+                    "prefix": "Amps: ",
+                    "suffix": ""
+                }
+            ]
+        },
+        {
+            "id": 34,
+            "label": { "lang_tag": "line3_import_usage_goes_above", "text": "Line 3 import energy usage goes above" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L3ImpWatts",
+                    "comparisson": ">",
+                    "prefix": "Watts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line3_import_usage_goes_above", "text": "Whenever the line 3 import energy usage for _DEVICE_NAME_ goes above _ARGUMENT_VALUE_ Watts" }
+                }
+            ]
+        },
+        {
+            "id": 35,
+            "label": { "lang_tag": "line3_import_usage_goes_below", "text": "Line 3 import energy usage goes below" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L3ImpWatts",
+                    "comparisson": "<",
+                    "prefix": "Watts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line3_import_usage_goes_below", "text": "Whenever the line 3 import energy usage for _DEVICE_NAME_ goes below _ARGUMENT_VALUE_ Watts" }
+                }
+            ]
+        },
+        {
+            "id": 36,
+            "label": { "lang_tag": "line3_export_usage_goes_above", "text": "Line 3 export energy usage goes above" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L3ExpWatts",
+                    "comparisson": ">",
+                    "prefix": "Watts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line3_export_usage_goes_above", "text": "Whenever the line 3 export energy usage for _DEVICE_NAME_ goes above _ARGUMENT_VALUE_ Watts" }
+                }
+            ]
+        },
+        {
+            "id": 37,
+            "label": { "lang_tag": "line3_export_usage_goes_below", "text": "Line 3 export energy usage goes below" },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeter1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "L3ExpWatts",
+                    "comparisson": "<",
+                    "prefix": "Watts: ",
+                    "suffix": "",
+                    "HumanFriendlyText": { "lang_tag": "hft_line3_export_usage_goes_below", "text": "Whenever the line 3 export energy usage for _DEVICE_NAME_ goes below _ARGUMENT_VALUE_ Watts" }
+                }
+            ]
+        }
+    ],
+    "DeviceType": "urn:schemas-rboer-com:device:SmartMeter:1"
+}

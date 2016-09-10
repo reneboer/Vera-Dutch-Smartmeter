@@ -1,0 +1,182 @@
+{
+	"default_icon": "meter_default.png",
+	"flashicon": "icons\/Power_Meter.png",
+    "inScene": "0",
+	"Tabs": [
+		{
+			"Label": {
+				"lang_tag": "tabname_control",
+				"text": "Control"
+			},
+			"Position": "0",
+			"TabType": "flash",
+			"top_navigation_tab": 1,
+			"ControlGroup":[
+				{
+					"id": "1",
+					"scenegroup": "1"
+				},
+				{
+					"id": "2",
+					"scenegroup": "2"
+				}
+			],
+			"SceneGroup": [
+				{
+					"id": "1",
+					"top": "1",
+					"left": "0",
+					"x": "2",
+					"y": "1"
+				},
+				{
+					"id": "2",
+					"top": "2",
+					"left": "0",
+					"x": "2",
+					"y": "1",
+					"isSingle": "1"
+				}
+			],
+			"Control": [
+				{
+					"ControlGroup":"1",
+					"ControlType": "label",
+					"top": "0",
+					"left": "0",
+					"Label": {
+						"lang_tag": "gas_flow_label",
+						"text": "l/h:"
+					},
+					"Display": {
+						"Top": 60,
+						"Left": 50,
+						"Width": 75,
+						"Height": 20
+					}
+				},
+				{
+					"ControlGroup":"1",
+					"ControlType": "variable",
+					"top": "0",
+					"left": "1",
+					"Display": {
+						"Service": "urn:rboer-com:serviceId:SmartMeterGAS1",
+						"Variable": "Flow",
+						"Top": 60,
+						"Left": 125,
+						"Width": 75,
+						"Height": 20
+					}
+				},
+				{
+					"ControlGroup":"2",
+					"ControlType": "label",
+					"top": "1",
+					"left": "0",
+					"Label": {
+						"lang_tag": "gas_meter_label",
+						"text": "M3:"
+					},
+					"Display": {
+						"Top": 90,
+						"Left": 50,
+						"Width": 75,
+						"Height": 20
+					}
+				},
+				{
+					"ControlGroup":"2",
+					"ControlType": "variable",
+					"top": "1",
+					"left": "1",
+					"text_align": "left",
+					"Display": {
+						"Service": "urn:rboer-com:serviceId:SmartMeterGAS1",
+						"Variable": "GasMeter",
+						"Top": 90,
+						"Left": 125,
+						"Width": 75,
+						"Height": 20
+					}
+				}
+			]
+		},
+		{ 
+			"Label": { "lang_tag": "advanced", "text": "Advanced" },
+			"Position": "1",
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "advanced_device"
+		},
+		{ 
+			"Label": { "lang_tag": "logs", "text": "Logs" },
+			"Position": "2",
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "device_logs" 
+		},
+		{
+			"Label": { "lang_tag": "notifications", "text": "Notifications" },
+			"Position": "3",
+			"TabType": "javascript",
+			"ScriptName": "shared.js",
+			"Function": "device_notifications" 
+		} 
+	],
+	"eventList2": [
+        {
+            "id": 1,
+            "label": {
+                "lang_tag": "gas_goes_above",
+                "text": "GAS Usage goes above"
+            },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeterGAS1",
+			"norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "Flow",
+                    "comparisson": ">",
+                    "prefix": {
+						"lang_tag":"gas_usage",
+						"text": "GAS Usage"
+					},
+                    "suffix": {},
+                    "HumanFriendlyText": {
+                        "lang_tag": "hft_gas_goes_above",
+                        "text": "GAS Usage reported by _DEVICE_NAME_ goes above _ARGUMENT_VALUE_"
+                    }
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "label": {
+                "lang_tag": "gas_goes_below",
+                "text": "GAS Usage goes below"
+            },
+            "serviceId": "urn:rboer-com:serviceId:SmartMeterGAS1",
+			"norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "Flow",
+                    "comparisson": "<",
+                    "prefix": {
+						"lang_tag":"gas_usage",
+						"text": "GAS Usage"
+					},
+                    "suffix": {},
+                    "HumanFriendlyText": {
+                        "lang_tag": "hft_gas_goes_below",
+                        "text": "GAS usage reported by _DEVICE_NAME_ goes below _ARGUMENT_VALUE_"
+                    }
+                }
+            ]
+        }
+    ],
+    "DeviceType": "urn:schemas-rboer-com:device:SmartMeterGAS:1"
+}

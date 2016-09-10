@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<implementation>
+	<settings>
+		<protocol>crlf</protocol>
+	</settings>
+	<files>L_SmartMeter.lua</files>
+	<startup>SmartMeter_Init</startup>
+	<incoming>
+		<lua>SmartMeter_Incoming(lul_data)</lua>
+	</incoming>
+	<actionList>
+		<action>
+			<serviceId>urn:rboer-com:serviceId:SmartMeter1</serviceId>
+			<name>GetActiveTariff</name>
+			<run>
+				local val = luup.variable_get(SM_SID, "ActiveTariff", lul_device)
+				return val
+			</run>
+		</action>
+		<action>
+			<serviceId>urn:rboer-com:serviceId:SmartMeter1</serviceId>
+			<name>GetMeterType</name>
+			<run>
+				local val = luup.variable_get(SM_SID, "MeterType", lul_device)
+				return val
+			</run>
+		</action>
+	</actionList>
+</implementation>

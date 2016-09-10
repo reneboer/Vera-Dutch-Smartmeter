@@ -1,0 +1,123 @@
+<?xml version="1.0"?>
+<scpd xmlns="urn:schemas-upnp-org:service-1-0">
+  <specVersion>
+    <major>1</major>
+    <minor>0</minor>
+  </specVersion>
+  <serviceStateTable>
+	<stateVariable sendEvents="no">
+      <name>MeterType</name>
+      <dataType>string</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="no">
+      <name>MeterNumber</name>
+      <dataType>string</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="no">
+      <name>DSMRVersion</name>
+      <dataType>string</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>ActiveTariff</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>House</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="no">
+      <name>ImportT1</name>
+      <dataType>number</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="no">
+      <name>ImportT2</name>
+      <dataType>number</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="no">
+      <name>ExportT1</name>
+      <dataType>number</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="no">
+      <name>ExportT2</name>
+      <dataType>number</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>L1Volt</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>L1Ampere</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>L1ImpWatts</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>L1ExpWatts</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>L2Volt</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>L2Ampere</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>L2ImpWatts</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>L2ExpWatts</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>L3Volt</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>L3Ampere</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>L3ImpWatts</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="yes">
+      <name>L3ExpWatts</name>
+      <dataType>ui4</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="no">
+      <name>ImportGas</name>
+      <dataType>number</dataType>
+    </stateVariable>
+	<stateVariable sendEvents="no">
+      <name>GasMeterNumber</name>
+      <dataType>string</dataType>
+    </stateVariable>
+  </serviceStateTable>
+  <actionList>
+    <action>
+		<name>GetActiveTariff</name>
+		<argumentList>
+			<argument>
+				<name>currentActiveTariff</name>
+				<direction>out</direction>
+				<relatedStateVariable>ActiveTariff</relatedStateVariable>
+			</argument>
+		</argumentList>
+    </action>
+    <action>
+		<name>GetMeterType</name>
+		<argumentList>
+			<argument>
+				<name>currentMeterType</name>
+				<direction>out</direction>
+				<relatedStateVariable>MeterType</relatedStateVariable>
+			</argument>
+		</argumentList>
+    </action>
+  </actionList>
+</scpd>
