@@ -6,6 +6,7 @@
  	V1.9 Changes:
 		Fix on LogGet function.
 		Removed some obsolete generic functions.
+		Can use local loop IP address on openLuup.
 
 	V1.8 Changes:
 		Fix for gas reading of DSMR 2.2 and 3.0 meters.
@@ -745,7 +746,7 @@ function SmartMeter_Init(lul_device)
 	else
 		-- Check if connected via IP. Thanks to nlrb.
 		local ip = luup.attr_get("ip", PlugIn.THIS_DEVICE)
-		if (ip ~= nil and ip ~= "" and ip ~= "127.0.0.1") then
+		if (ip ~= nil and ip ~= "") then
 			local ipaddr, port = string.match(ip, "(.-):(.*)")
 			if (port == nil) then
 				ipaddr = ip
