@@ -1,9 +1,13 @@
 --[==[
 	Module L_SmartMeter.lua
 	Written by R.Boer. 
-	V1.8 22 May 2016
+	V1.9 11 September 2016
 
- 	V1.8 Changes:
+ 	V1.9 Changes:
+		Fix on LogGet function.
+		Removed some obsolete generic functions.
+
+	V1.8 Changes:
 		Fix for gas reading of DSMR 2.2 and 3.0 meters.
 		Fix for converting meter number with hex values.
 		Child devices wil not show the delete button.
@@ -39,7 +43,7 @@ and for this plug in : http://forum.micasaverde.com/index.php/topic,32081.0.html
 
 local socketLib = require("socket")
 local PlugIn = {
-	Version = "1.8",
+	Version = "1.9",
 	DESCRIPTION = "Smart Meter", 
 	SM_SID = "urn:rboer-com:serviceId:SmartMeter1", 
 	EM_SID = "urn:micasaverde-com:serviceId:EnergyMetering1", 
@@ -78,22 +82,6 @@ local WholeHouse = "9-9:9.9.9" -- Dummy Meter reading type for WholeHouse device
 local FRC_PFX = "_frac" -- post fix for fractional values. We display meter readings without fractions on the UI.
 local SM_LOG = "SMLog" -- Log values needed for Whole House with Power Generator calculations and Gas Meter.
 
-local Icon = {
-	Variable = "IconSet",	-- Variable controlling the iconsVariable
-	IDLE = '0',		-- No background
-	OK = '1',		-- Green
-	BUSY = '2',		-- Blue
-	WAIT = '3',		-- Amber
-	ERROR = '4'		-- Red
-}
-local TaskData = {
-	Description = "Smart Meter",
-	taskHandle = -1,
-	ERROR = 2,
-	ERROR_PERM = -2,
-	SUCCESS = 4,
-	BUSY = 1
-}
 local PluginImages = { 'SmartMeter' }
 
 ---------------------------------------------------------------------------------------------
@@ -146,18 +134,6 @@ local function defVar(name, default, device, service)
 	end
 	return value
 end
--- Set message in task window.
-local function task(text, mode) 
-	local mode = mode or TaskData.ERROR 
-	if (mode ~= TaskData.SUCCESS) then 
-		if (mode == TaskData.ERROR_PERM) then
-			log("task: " .. (text or "no text"), 1) 
-		else	
-			log("task: " .. (text or "no text")) 
-		end 
-	end 
-	TaskData.taskHandle = luup.task(text, (mode == TaskData.ERROR_PERM) and TaskData.ERROR or mode, TaskData.Description, TaskData.taskHandle) 
-end 
 -- Set a luup failure message
 local function setluupfailure(status,devID)
 	if (luup.version_major < 7) then status = status ~= 0 end        -- fix UI5 status type
@@ -184,10 +160,6 @@ local function syslog_server (ip_and_port, tag, hostname)
 	local ok, err = sock:setpeername(ip, port)
 	if ok then ok = {send = send} end
 	return ok, err
-end
--- Set the status Icon
-local function setStatusIcon(status)
-	varSet(Icon.Variable, status)
 end
 -- Luup Reload function for UI5,6 and 7
 local function luup_reload()
@@ -228,8 +200,11 @@ end
 -- Functions to handle Log values. They are all five numbers, number four is time stamp number
 local function LogGet(meter)
 	local lgstr = varGet(SM_LOG, meter.dev, meter.sid)
-	local a,b,c,d,e = lgstr:match("(%d+),(%d+),(%d+),(%d+),(%d+)") or -1, 0, 0, 0, 0
-	if (lgstr:sub(1,1) == "-") then a = a * -1 end
+	local a,b,c,d,e = -1,0,0,0,0
+	if lgstr ~= "" then
+		a,b,c,d,e = lgstr:match("(%d+),(%d+),(%d+),(%d+),(%d+)")
+		if (lgstr:sub(1,1) == "-") then a = a * -1 end
+	end
 	return {v1=tonumber(a), v2=tonumber(b),v3=tonumber(c),ts=tonumber(d),v5=tonumber(e)}
 end
 local function LogSet(meter,val1,val2,val3,timest,val5)
@@ -240,9 +215,6 @@ local function LogSet(meter,val1,val2,val3,timest,val5)
 	lt.ts = timest or 0
 	lt.v5 = val5 or 0
 	varSet(SM_LOG, lt.v1..","..lt.v2..","..lt.v3..","..lt.ts..","..lt.v5, meter.dev, meter.sid)
-end
-local function LogMerge(lt)
-	return lt.v1..","..lt.v2..","..lt.v3..","..lt.ts..","..lt.v5
 end
 function SmartMeter_registerWithAltUI()
 	-- Register with ALTUI once it is ready
@@ -528,7 +500,7 @@ local function SetGas3(meter, dataStr)
 			LogSet(elem, newLiters, elem.rtlog.v1, usage, elem.tst, int)
 		else	
 			varSet("Flow", 0, elem.dev, elem.sid)
-			LogSet(elem, math.floor(newVal * 1000), elem.rtlog.v1, 0, elem.tst, int)
+			LogSet(elem, elem.rtlog.v1, elem.rtlog.v1, 0, elem.tst, int)
 		end
 		-- Set new Gas value on main plugin
 		varSet(elem.lab, math.floor(newVal))
