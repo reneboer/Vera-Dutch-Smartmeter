@@ -6,6 +6,7 @@
  	V1.8 Changes:
 		Fix for gas reading of DSMR 2.2 and 3.0 meters.
 		Fix for converting meter number with hex values.
+		Child devices wil not show the delete button.
 
 	V1.7 Changes:
 		More options to enable/disable to reduce CPU load on Vera when options are not in use.
