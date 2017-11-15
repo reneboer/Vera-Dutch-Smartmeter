@@ -1,9 +1,12 @@
 --[==[
 	Module L_SmartMeter.lua
 	Written by R.Boer. 
-	V1.9 11 September 2016
+	V1.10 9 November 2017
 
- 	V1.9 Changes:
+ 	V1.10 Changes:
+		Added support for Gas meter being on OBIS channel number 1-4.
+
+	V1.9 Changes:
 		Fix on LogGet function.
 		Removed some obsolete generic functions.
 		Can use local loop IP address on openLuup.
@@ -44,7 +47,7 @@ and for this plug in : http://forum.micasaverde.com/index.php/topic,32081.0.html
 
 local socketLib = require("socket")
 local PlugIn = {
-	Version = "1.9",
+	Version = "1.10",
 	DESCRIPTION = "Smart Meter", 
 	SM_SID = "urn:rboer-com:serviceId:SmartMeter1", 
 	EM_SID = "urn:micasaverde-com:serviceId:EnergyMetering1", 
@@ -71,18 +74,44 @@ local GeneratorPrev = {}
 local mapperData = {}  
 
 -- Keys for Smart Meter values
-local Mt, DSMRver, Ta, EqID = "/", "1-3:0.2.8", "0-0:96.14.0", "0-0:96.1.1"
-local ImpT1, ImpT2, ExpT1, ExpT2 = "1-0:1.8.1", "1-0:1.8.2", "1-0:2.8.1", "1-0:2.8.2"
-local ImpWatts, ExpWatts = "1-0:1.7.0", "1-0:2.7.0"
-local L1Volt, L2Volt, L3Volt = "1-0:32.7.0", "1-0:52.7.0", "1-0:72.7.0"
-local L1Amp, L2Amp, L3Amp = "1-0:31.7.0", "1-0:51.7.0", "1-0:71.7.0"
-local L1ImpWatts, L2ImpWatts, L3ImpWatts = "1-0:21.7.0", "1-0:41.7.0", "1-0:61.7.0"
-local L1ExpWatts, L2ExpWatts, L3ExpWatts = "1-0:22.7.0", "1-0:42.7.0", "1-0:62.7.0"
-local Gas, Gas2, GEqID = "0-1:24.2.1", "0-1:24.3.0", "0-1:96.1.0"
-local WholeHouse = "9-9:9.9.9" -- Dummy Meter reading type for WholeHouse device
+local mapKeys = {
+	Mt       = "/",
+	DSMRver  = "1-3:0.2.8",
+	Ta       = "0-0:96.14.0", 
+	EqID     = "0-0:96.1.1",
+	ImpT1    = "1-0:1.8.1", 
+	ImpT2    = "1-0:1.8.2",
+	ExpT1    = "1-0:2.8.1", 
+	ExpT2    = "1-0:2.8.2",
+	ImpWatts = "1-0:1.7.0",
+	ExpWatts = "1-0:2.7.0",
+	L1Volt   = "1-0:32.7.0",
+	L2Volt   = "1-0:52.7.0", 
+	L3Volt   = "1-0:72.7.0",
+	L1Amp    = "1-0:31.7.0",
+	L2Amp    = "1-0:51.7.0",
+	L3Amp    = "1-0:71.7.0",
+	L1ImpWatts = "1-0:21.7.0",
+	L2ImpWatts = "1-0:41.7.0",
+	L3ImpWatts = "1-0:61.7.0",
+	L1ExpWatts = "1-0:22.7.0",
+	L2ExpWatts = "1-0:42.7.0",
+	L1ExpWatts = "1-0:22.7.0",
+	L2ExpWatts = "1-0:42.7.0",
+	L3ExpWatts = "1-0:62.7.0",
+	Gas_1    = "0-1:24.2.1",
+	Gas_2    = "0-2:24.2.1",
+	Gas_3    = "0-3:24.2.1",
+	Gas_4    = "0-4:24.2.1",
+	Gas2     = "0-1:24.3.0",
+	GEqID_1  = "0-1:96.1.0",
+	GEqID_2  = "0-2:96.1.0",
+	GEqID_3  = "0-3:96.1.0",
+	GEqID_4  = "0-4:96.1.0",
+	WholeHouse = "9-9:9.9.9" -- Dummy Meter reading type for WholeHouse device
+}
 local FRC_PFX = "_frac" -- post fix for fractional values. We display meter readings without fractions on the UI.
 local SM_LOG = "SMLog" -- Log values needed for Whole House with Power Generator calculations and Gas Meter.
-
 local PluginImages = { 'SmartMeter' }
 
 ---------------------------------------------------------------------------------------------
@@ -262,9 +291,9 @@ local function SetKWH(meter, dataStr)
 		elem.val = newVal
 		local impVal = 0
 		local expVal = 0
-		local impT1Elem = mapperData[ImpT1]
-		local impT2Elem = mapperData[ImpT2]
-		local whElem = mapperData[WholeHouse]
+		local impT1Elem = mapperData[mapKeys.ImpT1]
+		local impT2Elem = mapperData[mapKeys.ImpT2]
+		local whElem = mapperData[mapKeys.WholeHouse]
 		-- Sum import meters
 		if (impT1Elem.val ~= -1 and impT2Elem.val ~= -1) then impVal = impT1Elem.val + impT2Elem.val end
 		-- Are we processing an Import value?
@@ -279,8 +308,8 @@ local function SetKWH(meter, dataStr)
 		end	
 		-- If applicable sum export meters
 		if (PlugIn.ShowExport == 1) then
-			local expT1Elem = mapperData[ExpT1]
-			local expT2Elem = mapperData[ExpT2]
+			local expT1Elem = mapperData[mapKeys.ExpT1]
+			local expT2Elem = mapperData[mapKeys.ExpT2]
 			if (expT1Elem.val ~= -1 and expT2Elem.val ~= -1) then expVal = expT1Elem.val + expT2Elem.val end
 			-- Are we processing an Export value?
 			if (elem.dir == -1) then
@@ -322,7 +351,7 @@ local function SetWatts(meter, dataStr)
 	end
 	-- We only calculate the below when the reading is not zero and start up has completed. No need to do it twice for Import and Export in one round. 
 	if (newVal == 0) then return 0 end
-	local whElem = mapperData[WholeHouse]
+	local whElem = mapperData[mapKeys.WholeHouse]
 	-- Just set WholeHouse value to follow meter value
 	local dirVal = newVal * elem.dir
 	if (newVal ~= 0) and (dirVal ~= whElem.val) then
@@ -344,7 +373,7 @@ local function SetWattsGen(meter, dataStr)
 	end
 	-- We only calculate the below when the reading is not zero and start up has completed. No need to do it twice for Import and Export in one round. 
 	if (newVal == 0) then return 0 end
-	local whElem = mapperData[WholeHouse]
+	local whElem = mapperData[mapKeys.WholeHouse]
 	-- See if we have an active power generator to include, then we are not updating the Whole House reading here unless it is real time
 	if (PlugIn.GeneratorInterval == 0) then
 		-- Just set WholeHouse value to follow meter value
@@ -412,12 +441,14 @@ end
 
 -- Update the GasMeter reading for single line reading.
 local function SetGas(meter, dataStr) 
-	local elem = meter
+--	local elem = meter
+	-- All map to meter 1 to handle meter numbers 1-4
+	local elem = mapperData[mapKeys.Gas_1]
 	if (elem.dev == nil) then return "" end
 	-- See if we have a new reading value by looking at the timestamp from the meter.
 	local dateTime, DLS = dataStr:match("(%d+)(.)")
 	local yr, mnth, dy, hh, mm , ss = dateTime:match("(%d%d)(%d%d)(%d%d)(%d%d)(%d%d)(%d%d)")
-	local convertedTimestamp = os.time({year = '20'..yr, month = mnth, day = dy, hour = hh, min = mm, sec = ss, isdst = (DTS == 'S')})
+	local convertedTimestamp = os.time({year = '20'..yr, month = mnth, day = dy, hour = hh, min = mm, sec = ss, isdst = (DLS == 'S')})
 	local int = math.abs(os.difftime(convertedTimestamp, elem.rtlog.ts))
 	-- Get last gas reading and the time stamp
 	local newVal = tonumber(string.match(dataStr:match("(%d+.%d+*m3)"), "%d+.%d+"))
@@ -459,7 +490,7 @@ end
 -- Handle GAS for meters that have it on a separate line for DSMR 2.2 and 3.0 standard.
 local function SetGas2(meter, dataStr) 
 --	local elem = meter
-	local elem = mapperData[Gas]
+	local elem = mapperData[mapKeys.Gas_1]
 	if (elem.dev == nil) then return "" end
 	local dateTime = dataStr:match("(%d+)")
 	local yr, mnth, dy, hh, mm , ss = dateTime:match("(%d%d)(%d%d)(%d%d)(%d%d)(%d%d)(%d%d)")
@@ -472,7 +503,8 @@ local function SetGas2(meter, dataStr)
 	return 0
 end
 local function SetGas3(meter, dataStr) 
-	local elem = meter
+--	local elem = meter
+	local elem = mapperData[mapKeys.Gas_1]
 	if (elem.dev == nil) then return "" end
 	local newVal = tonumber(dataStr:match("%d+.%d+"))
 	local int = math.abs(os.difftime(elem.tst, elem.rtlog.ts))
@@ -517,20 +549,20 @@ local function SetTariff(meter, dataStr)
 		elem.val = newVal
 		varSet(elem.var, newVal, elem.dev, elem.sid)
 		if (PlugIn.ShowMultiTariff == 1) then 
-			local impElem = mapperData[ImpWatts]
+			local impElem = mapperData[mapKeys.ImpWatts]
 			varSet(impElem.var, 0, impElem.dev, impElem.sid)
 			if (newVal == 1) then 
-				impElem.dev = mapperData[ImpT1].dev
+				impElem.dev = mapperData[mapKeys.ImpT1].dev
 			elseif (newVal == 2) then 
-				impElem.dev = mapperData[ImpT2].dev
+				impElem.dev = mapperData[mapKeys.ImpT2].dev
 			end
 			if (PlugIn.ShowExport == 1) then 
-				local expElem = mapperData[ExpWatts]
+				local expElem = mapperData[mapKeys.ExpWatts]
 				varSet(expElem.var, 0, expElem.dev, expElem.sid)
 				if (newVal == 1) then 
-					expElem.dev = mapperData[ExpT1].dev
+					expElem.dev = mapperData[mapKeys.ExpT1].dev
 				elseif (newVal == 2) then 
-					expElem.dev = mapperData[ExpT2].dev
+					expElem.dev = mapperData[mapKeys.ExpT2].dev
 				end
 			end
 		end
@@ -610,36 +642,28 @@ local function SetMeterNum(meter, dataStr)
 	mapperData[elem.key] = nil
 	return newVal
 end
---[==[ -- Mapping for each key value we are interested in.
-local mapperData = {
-	[Mt] = {var = "MeterType", sid = SM_SID, dev = nil, val = "", func = SetMeter, dir = 1, desc = "", xml = nil},
-	[DSMRver] = {var = "DSMRVersion", sid = SM_SID, dev = nil, val = 0, func = SetVersion, dir = 1, desc = "", xml = nil},
-	[Ta] = {var = "ActiveTariff", sid = SM_SID, dev = nil, val = 0, func = SetTariff, dir = 1, desc = "", xml = nil},
-	[EqID] = {var = "MeterNumber", sid = SM_SID, dev = nil, val = 0, func = SetMeterNum, dir = 1, desc = "", xml = nil},
-	[L1Volt] = {var = "L1Volt", sid = SM_SID, dev = nil, val = 0, func = SetLineVolt, dir = 1, sum = 0, desc = "", lab = "", xml = nil},
-	[L2Volt] = {var = "L2Volt", sid = SM_SID, dev = nil, val = 0, func = SetLineVolt, dir = 1, sum = 0, desc = "", lab = "", xml = nil},
-	[L3Volt] = {var = "L3Volt", sid = SM_SID, dev = nil, val = 0, func = SetLineVolt, dir = 1, sum = 0, desc = "", lab = "", xml = nil},
-	[L1Amp] = {var = "L1Ampere", sid = SM_SID, dev = nil, val = 0, func = SetLineAmp, dir = 1, sum = 0, desc = "", lab = "", xml = nil},
-	[L2Amp] = {var = "L2Ampere", sid = SM_SID, dev = nil, val = 0, func = SetLineAmp, dir = 1, sum = 0, desc = "", lab = "", xml = nil},
-	[L3Amp] = {var = "L3Ampere", sid = SM_SID, dev = nil, val = 0, func = SetLineAmp, dir = 1, sum = 0, desc = "", lab = "", xml = nil},
-	[L1ImpWatts] = {var = "Watts", sid = EM_SID, dev = nil, val = 0, func = SetLineWatts, dir = 1, sum = 0, desc = "Line 1", lab = "L1ImpWatts", xml = PM_XML},
-	[L2ImpWatts] = {var = "Watts", sid = EM_SID, dev = nil, val = 0, func = SetLineWatts, dir = 1, sum = 0, desc = "Line 2", lab = "L2ImpWatts", xml = PM_XML},
-	[L3ImpWatts] = {var = "Watts", sid = EM_SID, dev = nil, val = 0, func = SetLineWatts, dir = 1, sum = 0, desc = "Line 3", lab = "L3ImpWatts", xml = PM_XML},
-	[L1ExpWatts] = {var = "Watts", sid = EM_SID, dev = nil, val = 0, func = SetLineWatts, dir = -1, sum = 0, desc = "", lab = "L1ExpWatts", xml = PM_XML},
-	[L2ExpWatts] = {var = "Watts", sid = EM_SID, dev = nil, val = 0, func = SetLineWatts, dir = -1, sum = 0, desc = "", lab = "L2ExpWatts", xml = PM_XML},
-	[L3ExpWatts] = {var = "Watts", sid = EM_SID, dev = nil, val = 0, func = SetLineWatts, dir = -1, sum = 0, desc = "", lab = "L3ExpWatts", xml = PM_XML},
-	[ImpT1] = {var = "KWH", sid = EM_SID, dev = nil, val = -1, func = SetKWH, dir = 1, sum = 0, desc = "ImportT1", lab = "ImportT1", xml = PM_XML},
-	[ImpT2] = {var = "KWH", sid = EM_SID, dev = nil, val = -1, func = SetKWH, dir = 1, sum = 0, desc = "ImportT2", lab = "ImportT2", xml = PM_XML},
-	[ExpT1] = {var = "KWH", sid = EM_SID, dev = nil, val = -1, func = SetKWH, dir = -1, sum = 0, desc = "ExportT1", lab = "ExportT1", xml = PM_XML},
-	[ExpT2] = {var = "KWH", sid = EM_SID, dev = nil, val = -1, func = SetKWH, dir = -1, sum = 1, desc = "ExportT2", lab = "ExportT2", xml = PM_XML},
-	[ImpWatts] = {var = "Watts", sid = EM_SID, dev = nil, val = 0, func = SetWatts, dir = 1, sum = 0, desc = "", xml = nil},
-	[ExpWatts] = {var = "Watts", sid = EM_SID, dev = nil, val = 0, func = SetWatts, dir = -1, sum = 1, desc = "", xml = nil},
-	[Gas2]= {var = "", sid = GE_SID, dev = nil, val = 0, func = SetGas2, dir = 1, desc = "", xml = nil},
-	[Gas]= {var = "GasMeter", sid = GE_SID, dev = nil, val = 0, func = SetGas, dir = 1, desc = "ImportGas", lab = "ImportGas", xml = GE_XML, logrt = nil},
-	[GEqID] = {var = "GasMeterNumber", sid = SM_SID, dev = nil, val = 0, func = SetMeterNum, dir = 1, desc = "", xml = nil},
-	[WholeHouse]= {var = "KWH", sid = EM_SID, dev = nil, val = 0, func = nil, dir = 1, desc = "House", lab = "House", xml = PM_XML, logrt = nil}
-}
---]==]
+-- Meter Numbers 
+local function SetGasMeterNum(meter, dataStr) 
+	local elem = mapperData[mapKeys.GEqID_1]
+	local newVal = dataStr:sub(2,-2)
+	if (newVal ~= elem.val) then
+		local resstr = ""
+		for i = 1, newVal:len(),2 do
+			resstr = resstr .. string.char(tonumber(newVal:sub(i,i+1),16))
+		end
+		varSet(elem.var, resstr)
+		elem.val = newVal
+	end
+	-- We only need to set this value once as it never changes after startup. So clear definition till next time.
+	mapperData[elem.key] = nil
+	elem = mapperData[mapKeys.GEqID_2]
+	mapperData[elem.key] = nil
+	elem = mapperData[mapKeys.GEqID_3]
+	mapperData[elem.key] = nil
+	elem = mapperData[mapKeys.GEqID_4]
+	mapperData[elem.key] = nil
+	return newVal
+end
 
 -- Find the device ID of the type and set the in memory value to the current.
 local function findChild(meterID)
@@ -725,7 +749,7 @@ end
 -- Start up plug in
 function SmartMeter_Init(lul_device)
 	PlugIn.THIS_DEVICE = lul_device
-	log("Starting "..PlugIn.DESCRIPTION.." device: " .. tostring(PlugIn.THIS_DEVICE),3)
+	log("Starting "..PlugIn.DESCRIPTION.." version "..PlugIn.Version.." device: " .. tostring(PlugIn.THIS_DEVICE),3)
 	varSet("Version", PlugIn.Version)
 	local syslogInfo = defVar("Syslog")	-- send to syslog if IP address and Port 'XXX.XX.XX.XXX:YYY' (default port 514)
 	PlugIn.LogLevel = tonumber(defVar("LogLevel", 1))
@@ -785,53 +809,60 @@ function SmartMeter_Init(lul_device)
 	end
 	PlugIn.ShowGas = tonumber(defVar("ShowGas",0)) -- When 1 show Import and Export separately
 	-- Set some of the default options we want to read
-	mapperRow(Mt, "MeterType", PlugIn.SM_SID, SetMeter)
-	mapperRow(DSMRver, "DSMRVersion", PlugIn.SM_SID, SetVersion)
-	mapperRow(Ta, "ActiveTariff", PlugIn.SM_SID, SetTariff)
-	mapperRow(EqID, "MeterNumber", PlugIn.SM_SID, SetMeterNum)
-	mapperRowChild(WholeHouse, "KWH", PlugIn.EM_SID, 0, nil, 1, "House", "House", PlugIn.PM_XML)
-	mapperRowChild(ImpT1, "KWH", PlugIn.EM_SID, -1, SetKWH, 1, "ImportT1", "ImportT1", PlugIn.PM_XML)
-	mapperRowChild(ImpT2, "KWH", PlugIn.EM_SID, -1, SetKWH, 1, "ImportT2", "ImportT2", PlugIn.PM_XML)
+	mapperRow(mapKeys.Mt, "MeterType", PlugIn.SM_SID, SetMeter)
+	mapperRow(mapKeys.DSMRver, "DSMRVersion", PlugIn.SM_SID, SetVersion)
+	mapperRow(mapKeys.Ta, "ActiveTariff", PlugIn.SM_SID, SetTariff)
+	mapperRow(mapKeys.EqID, "MeterNumber", PlugIn.SM_SID, SetMeterNum)
+	mapperRowChild(mapKeys.WholeHouse, "KWH", PlugIn.EM_SID, 0, nil, 1, "House", "House", PlugIn.PM_XML)
+	mapperRowChild(mapKeys.ImpT1, "KWH", PlugIn.EM_SID, -1, SetKWH, 1, "ImportT1", "ImportT1", PlugIn.PM_XML)
+	mapperRowChild(mapKeys.ImpT2, "KWH", PlugIn.EM_SID, -1, SetKWH, 1, "ImportT2", "ImportT2", PlugIn.PM_XML)
 	if (PlugIn.UseGeneratedPower == 0) then
-		mapperRow(ImpWatts, "Watts", PlugIn.EM_SID, SetWatts)
+		mapperRow(mapKeys.ImpWatts, "Watts", PlugIn.EM_SID, SetWatts)
 	else	
-		mapperRow(ImpWatts, "Watts", PlugIn.EM_SID, SetWattsGen)
+		mapperRow(mapKeys.ImpWatts, "Watts", PlugIn.EM_SID, SetWattsGen)
 	end	
-	mapperRowChild(L1ImpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, 1, "Line 1", "L1ImpWatts", PlugIn.PM_XML)
-	mapperRowChild(L2ImpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, 1, "Line 2", "L2ImpWatts", PlugIn.PM_XML)
-	mapperRowChild(L3ImpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, 1, "Line 3", "L3ImpWatts", PlugIn.PM_XML)
-	mapperRow(L1Volt, "L1Volt", PlugIn.SM_SID, SetLineVolt)
-	mapperRow(L2Volt, "L2Volt", PlugIn.SM_SID, SetLineVolt)
-	mapperRow(L3Volt, "L3Volt", PlugIn.SM_SID, SetLineVolt)
-	mapperRow(L1Amp, "L1Ampere", PlugIn.SM_SID, SetLineAmp)
-	mapperRow(L2Amp, "L2Ampere", PlugIn.SM_SID, SetLineAmp)
-	mapperRow(L3Amp, "L3Ampere", PlugIn.SM_SID, SetLineAmp)
+	mapperRowChild(mapKeys.L1ImpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, 1, "Line 1", "L1ImpWatts", PlugIn.PM_XML)
+	mapperRowChild(mapKeys.L2ImpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, 1, "Line 2", "L2ImpWatts", PlugIn.PM_XML)
+	mapperRowChild(mapKeys.L3ImpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, 1, "Line 3", "L3ImpWatts", PlugIn.PM_XML)
+	mapperRow(mapKeys.L1Volt, "L1Volt", PlugIn.SM_SID, SetLineVolt)
+	mapperRow(mapKeys.L2Volt, "L2Volt", PlugIn.SM_SID, SetLineVolt)
+	mapperRow(mapKeys.L3Volt, "L3Volt", PlugIn.SM_SID, SetLineVolt)
+	mapperRow(mapKeys.L1Amp, "L1Ampere", PlugIn.SM_SID, SetLineAmp)
+	mapperRow(mapKeys.L2Amp, "L2Ampere", PlugIn.SM_SID, SetLineAmp)
+	mapperRow(mapKeys.L3Amp, "L3Ampere", PlugIn.SM_SID, SetLineAmp)
 	if (PlugIn.ShowExport == 1) then
-		mapperRowChild(ExpT1, "KWH", PlugIn.EM_SID, -1, SetKWH, -1, "ExportT1", "ExportT1", PlugIn.PM_XML)
-		mapperRowChild(ExpT2, "KWH", PlugIn.EM_SID, -1, SetKWH, -1, "ExportT2", "ExportT2", PlugIn.PM_XML)
+		mapperRowChild(mapKeys.ExpT1, "KWH", PlugIn.EM_SID, -1, SetKWH, -1, "ExportT1", "ExportT1", PlugIn.PM_XML)
+		mapperRowChild(mapKeys.ExpT2, "KWH", PlugIn.EM_SID, -1, SetKWH, -1, "ExportT2", "ExportT2", PlugIn.PM_XML)
 		if (PlugIn.UseGeneratedPower == 0) then
-			mapperRow(ExpWatts, "Watts", PlugIn.EM_SID, SetWatts, -1)
+			mapperRow(mapKeys.ExpWatts, "Watts", PlugIn.EM_SID, SetWatts, -1)
 		else	
-			mapperRow(ExpWatts, "Watts", PlugIn.EM_SID, SetWattsGen, -1)
+			mapperRow(mapKeys.ExpWatts, "Watts", PlugIn.EM_SID, SetWattsGen, -1)
 		end	
-		mapperRowChild(L1ExpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, -1, "", "L1ExpWatts", PlugIn.PM_XML)
-		mapperRowChild(L2ExpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, -1, "", "L2ExpWatts", PlugIn.PM_XML)
-		mapperRowChild(L3ExpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, -1, "", "L3ExpWatts", PlugIn.PM_XML)
+		mapperRowChild(mapKeys.L1ExpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, -1, "", "L1ExpWatts", PlugIn.PM_XML)
+		mapperRowChild(mapKeys.L2ExpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, -1, "", "L2ExpWatts", PlugIn.PM_XML)
+		mapperRowChild(mapKeys.L3ExpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, -1, "", "L3ExpWatts", PlugIn.PM_XML)
 	end	
 	if (PlugIn.ShowGas == 1) then 
-		mapperRowChild(Gas, "GasMeter", PlugIn.GE_SID, 0, SetGas, 1, "ImportGas", "ImportGas", PlugIn.GE_XML)
-		mapperRow(Gas2, "", PlugIn.GE_SID, SetGas2)
-		mapperRow(GEqID, "GasMeterNumber", PlugIn.SM_SID, SetMeterNum)
+--		mapperRowChild(Gas, "GasMeter", PlugIn.GE_SID, 0, SetGas, 1, "ImportGas", "ImportGas", PlugIn.GE_XML)
+		mapperRowChild(mapKeys.Gas_1, "GasMeter", PlugIn.GE_SID, 0, SetGas, 1, "ImportGas", "ImportGas", PlugIn.GE_XML)
+		mapperRow(mapKeys.Gas_2, "", PlugIn.GE_SID, SetGas)
+		mapperRow(mapKeys.Gas_3, "", PlugIn.GE_SID, SetGas)
+		mapperRow(mapKeys.Gas_4, "", PlugIn.GE_SID, SetGas)
+		mapperRow(mapKeys.Gas2, "", PlugIn.GE_SID, SetGas2)
+		mapperRow(mapKeys.GEqID_1, "GasMeterNumber", PlugIn.SM_SID, SetGasMeterNum)
+		mapperRow(mapKeys.GEqID_2, "", PlugIn.SM_SID, SetGasMeterNum)
+		mapperRow(mapKeys.GEqID_3, "", PlugIn.SM_SID, SetGasMeterNum)
+		mapperRow(mapKeys.GEqID_4, "", PlugIn.SM_SID, SetGasMeterNum)
 	end
 
 	-- Setup child device and mapping details.
-	mapperData[Ta].val = defVar("ActiveTariff",1)
-	mapperData[Mt].val = defVar("MeterType", "Unknown")
+	mapperData[mapKeys.Ta].val = defVar("ActiveTariff",1)
+	mapperData[mapKeys.Mt].val = defVar("MeterType", "Unknown")
 	PlugIn.GeneratorPrevLen = defVar("GeneratorOffset",0)
 	if (PlugIn.ShowMultiTariff == 0 and PlugIn.ShowExport == 1) then 
 		-- Tweak child descriptions if no multi tariff
-		mapperData[ImpT1].desc = "Import"
-		mapperData[ExpT1].desc = "Export"
+		mapperData[mapKeys.ImpT1].desc = "Import"
+		mapperData[mapKeys.ExpT1].desc = "Export"
 	end
 	-- set up logging to syslog	
 	if (syslogInfo ~= '') then
@@ -846,18 +877,18 @@ function SmartMeter_Init(lul_device)
 	local childDevices = luup.chdev.start(PlugIn.THIS_DEVICE);  
 	
     -- Create devices needed if not exist
-	addMeterDevice(childDevices, WholeHouse)
-	if (PlugIn.ShowMultiTariff == 1 or PlugIn.ShowExport == 1) then addMeterDevice(childDevices,ImpT1) end
-	if (PlugIn.ShowMultiTariff == 1) then addMeterDevice(childDevices, ImpT2) end
+	addMeterDevice(childDevices, mapKeys.WholeHouse)
+	if (PlugIn.ShowMultiTariff == 1 or PlugIn.ShowExport == 1) then addMeterDevice(childDevices,mapKeys.ImpT1) end
+	if (PlugIn.ShowMultiTariff == 1) then addMeterDevice(childDevices, mapKeys.ImpT2) end
 	if (PlugIn.ShowExport == 1) then
-		addMeterDevice(childDevices, ExpT1)
-		if (PlugIn.ShowMultiTariff == 1) then addMeterDevice(childDevices, ExpT2) end
+		addMeterDevice(childDevices, mapKeys.ExpT1)
+		if (PlugIn.ShowMultiTariff == 1) then addMeterDevice(childDevices, mapKeys.ExpT2) end
 	end	
-	if (PlugIn.ShowGas == 1) then addMeterDevice(childDevices, Gas) end
+	if (PlugIn.ShowGas == 1) then addMeterDevice(childDevices, mapKeys.Gas_1) end
 	if (PlugIn.ShowLines == 1) then
-		addMeterDevice(childDevices, L1ImpWatts)
-		addMeterDevice(childDevices, L2ImpWatts)
-		addMeterDevice(childDevices, L3ImpWatts)
+		addMeterDevice(childDevices, mapKeys.L1ImpWatts)
+		addMeterDevice(childDevices, mapKeys.L2ImpWatts)
+		addMeterDevice(childDevices, mapKeys.L3ImpWatts)
 	end	
 	-- Vera will reload here when there are new devices or changes to a child
 	luup.chdev.sync(PlugIn.THIS_DEVICE, childDevices)
@@ -867,51 +898,51 @@ function SmartMeter_Init(lul_device)
 		return true, "Plug-in Disabled.", PlugIn.DESCRIPTION
 	end	
 
-	mapperData[Mt].dev = PlugIn.THIS_DEVICE
-	mapperData[Ta].dev = PlugIn.THIS_DEVICE
+	mapperData[mapKeys.Mt].dev = PlugIn.THIS_DEVICE
+	mapperData[mapKeys.Ta].dev = PlugIn.THIS_DEVICE
 	-- Pickup device IDs from names
-	findChild(WholeHouse)
-	mapperData[WholeHouse].rtlog = LogGet(mapperData[WholeHouse])
-	if (PlugIn.ShowMultiTariff == 1 or PlugIn.ShowExport == 1) then findChild(ImpT1) end
+	findChild(mapKeys.WholeHouse)
+	mapperData[mapKeys.WholeHouse].rtlog = LogGet(mapperData[mapKeys.WholeHouse])
+	if (PlugIn.ShowMultiTariff == 1 or PlugIn.ShowExport == 1) then findChild(mapKeys.ImpT1) end
 	if (PlugIn.ShowMultiTariff == 1) then 
-		findChild(ImpT2) 
+		findChild(mapKeys.ImpT2) 
 	else
-		mapperData[ImpT2].dev = mapperData[ImpT1].dev
+		mapperData[mapKeys.ImpT2].dev = mapperData[mapKeys.ImpT1].dev
 	end
 	if (PlugIn.ShowExport == 1) then
-		findChild(ExpT1)
+		findChild(mapKeys.ExpT1)
 		if (PlugIn.ShowMultiTariff == 1) then 
-			findChild(ExpT2) 
+			findChild(mapKeys.ExpT2) 
 		else
-			mapperData[ExpT2].dev = mapperData[ExpT1].dev
+			mapperData[mapKeys.ExpT2].dev = mapperData[mapKeys.ExpT1].dev
 		end
 	end	
 	if (PlugIn.ShowGas == 1) then 
-		findChild(Gas)
-		mapperData[Gas].rtlog = LogGet(mapperData[Gas])
+		findChild(mapKeys.Gas_1)
+		mapperData[mapKeys.Gas_1].rtlog = LogGet(mapperData[mapKeys.Gas_1])
 	end
 	if (PlugIn.ShowLines == 1) then
-		findChild(L1ImpWatts)
-		findChild(L2ImpWatts)
-		findChild(L3ImpWatts)
+		findChild(mapKeys.L1ImpWatts)
+		findChild(mapKeys.L2ImpWatts)
+		findChild(mapKeys.L3ImpWatts)
 		if (PlugIn.ShowExport == 1) then 
-			mapperData[L1ExpWatts].dev = mapperData[L1ImpWatts].dev
-			mapperData[L2ExpWatts].dev = mapperData[L2ImpWatts].dev
-			mapperData[L3ExpWatts].dev = mapperData[L3ImpWatts].dev
+			mapperData[mapKeys.L1ExpWatts].dev = mapperData[mapKeys.L1ImpWatts].dev
+			mapperData[mapKeys.L2ExpWatts].dev = mapperData[mapKeys.L2ImpWatts].dev
+			mapperData[mapKeys.L3ExpWatts].dev = mapperData[mapKeys.L3ImpWatts].dev
 		end
 	end	
 	-- For current watt readings map to right device ID
 	if (PlugIn.ShowMultiTariff == 1) then 
-		if (mapperData[Ta].val == 1) then 
-			mapperData[ImpWatts].dev = mapperData[ImpT1].dev
-			if (PlugIn.ShowExport == 1) then mapperData[ExpWatts].dev = mapperData[ExpT1].dev end
+		if (mapperData[mapKeys.Ta].val == 1) then 
+			mapperData[mapKeys.ImpWatts].dev = mapperData[mapKeys.ImpT1].dev
+			if (PlugIn.ShowExport == 1) then mapperData[mapKeys.ExpWatts].dev = mapperData[mapKeys.ExpT1].dev end
 		else
-			mapperData[ImpWatts].dev = mapperData[ImpT2].dev
-			if (PlugIn.ShowExport == 1) then mapperData[ExpWatts].dev = mapperData[ExpT2].dev end
+			mapperData[mapKeys.ImpWatts].dev = mapperData[mapKeys.ImpT2].dev
+			if (PlugIn.ShowExport == 1) then mapperData[mapKeys.ExpWatts].dev = mapperData[mapKeys.ExpT2].dev end
 		end
 	else	
-		mapperData[ImpWatts].dev = mapperData[ImpT1].dev
-		if (PlugIn.ShowExport == 1) then mapperData[ExpWatts].dev = mapperData[ExpT1].dev end
+		mapperData[mapKeys.ImpWatts].dev = mapperData[mapKeys.ImpT1].dev
+		if (PlugIn.ShowExport == 1) then mapperData[mapKeys.ExpWatts].dev = mapperData[mapKeys.ExpT1].dev end
 	end
 	PlugIn.GeneratorPrevLen = tonumber(defVar("GeneratorSampleDelay",0)) / 10
 	if (PlugIn.GeneratorPrevLen > 0) then
@@ -939,8 +970,7 @@ function SmartMeter_Incoming(data)
 	if (data:len() > 0) then
 		if (PlugIn.indGasComming) then
 			-- GAS on DSMR 2.x and 3.0 where GAS reading is on its own line after key line 0-1:24.3.0.
-			local elem = mapperData[Gas]
-			SetGas3(elem,data)
+			SetGas3("",data)
 			PlugIn.indGasComming = false
 		else
 			-- Get line key
