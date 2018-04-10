@@ -1,7 +1,11 @@
 //# sourceURL=J_SmartMeter.js
 // SmartMeter control UI for UI5/6
 // Written by R.Boer. 
-// V1.7 17 March 2016
+// V1.12 27 March 2018
+//
+// V1.12 Changes:
+//		Can reduce number of updates to reduce CPU load on Vera.
+//		Allow for less frequent Generator updates (15 & 30 minutes). Enphase has changed to 15 on local API.
 //
 // V1.7 Changes:
 //		User can disable plugin. Signal status on control panel.
@@ -16,8 +20,9 @@ function SmartMeterSettings(deviceID) {
 	var devicePos = get_device_index(deviceID);
 	var deviceList = jsonp.ud.devices;
 	var yesNo = [{'value':'0','label':'No'},{'value':'1','label':'Yes'}];
-	var logLevel = [{'value':'1','label':'Error'},{'value':'2','label':'Warning'},{'value':'8','label':'Info'},{'value':'10','label':'Debug'}];
-	var genIntervals = [{'value':'0','label':'Real-time'},{'value':'30','label':'30 seconds'},{'value':'60','label':'1 Minute'},{'value':'120','label':'2 minutes'},{'value':'180','label':'3 minutes'},{'value':'240','label':'4 minutes'},{'value':'300','label':'5 minutes'},{'value':'360','label':'6 minutes'},{'value':'420','label':'7 minutes'},{'value':'480','label':'8 minutes'},{'value':'540','label':'9 minutes'},{'value':'600','label':'10 minutes'}];
+	var logLevel = [{'value':'1','label':'Error'},{'value':'2','label':'Warning'},{'value':'8','label':'Info'},{'value':'11','label':'Debug'}];
+	var updateFreq = [{'value':'0','label':'Instant'},{'value':'10','label':'10 Seconds'},{'value':'30','label':'30 Seconds'},{'value':'60','label':'60 Seconds'},{'value':'300','label':'5 Minutes'}];
+	var genIntervals = [{'value':'0','label':'Real-time'},{'value':'30','label':'30 seconds'},{'value':'60','label':'1 Minute'},{'value':'120','label':'2 minutes'},{'value':'180','label':'3 minutes'},{'value':'240','label':'4 minutes'},{'value':'300','label':'5 minutes'},{'value':'360','label':'6 minutes'},{'value':'420','label':'7 minutes'},{'value':'480','label':'8 minutes'},{'value':'540','label':'9 minutes'},{'value':'600','label':'10 minutes'},{'value':'900','label':'15 minutes'},{'value':'1800','label':'30 minutes'}];
 	var genOffsets = [{'value':'0','label':'None'},{'value':'1','label':'10 seconds'},{'value':'2','label':'20 seconds'},{'value':'3','label':'30 seconds'},{'value':'4','label':'40 seconds'},{'value':'5','label':'50 seconds'},{'value':'6','label':'60 seconds'}];
 	var powerMeters = [];
 	for (i=0; i<deviceList.length; i++) {
@@ -45,6 +50,7 @@ function SmartMeterSettings(deviceID) {
 			smhtmlAddPulldown(deviceID, 'Power Generator Update offset', 'GeneratorOffset', genOffsets, true);
 		}	
 		html += smhtmlAddPulldown(deviceID, 'Show Gas meter', 'ShowGas', yesNo, true)+
+		smhtmlAddPulldown(deviceID, 'Update Frequency', 'UpdateFrequency', updateFreq, true)+
 		smhtmlAddPulldown(deviceID, 'Log level', 'LogLevel', logLevel, true)+
 		smhtmlAddInput(deviceID, 'Syslog server IP Address:Port', 30, 'Syslog');
 	}	

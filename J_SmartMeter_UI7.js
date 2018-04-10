@@ -1,7 +1,12 @@
 //# sourceURL=J_SmartMeter_UI7.js
 // SmartMeter control UI for UI7
 // Written by R.Boer. 
-// V1.7 17 March 2016
+// V1.12 28 March 2018
+//
+// V1.12 Changes:
+//		Can reduce number of updates to reduce CPU load on Vera.
+//		Nicer looking on ALTUI
+//		Allow for less frequent Generator updates (15 & 30 minutes). Enphase has changed to 15 on local API.
 //
 // V1.7 Changes:
 //		User can disable plugin. Signal status on control panel.
@@ -14,6 +19,7 @@ var SmartMeter = (function (api) {
 	var ERR_MSG = "Error : ";
 	var DIV_PREFIX = "rbSM_";		// Used in HTML div IDs to make them unique for this module
 	var MOD_PREFIX = "SmartMeter";  // Must match module name above
+	var bOnALTUI = false;
 
 	// Forward declaration.
     var myModule = {};
@@ -27,6 +33,9 @@ var SmartMeter = (function (api) {
     function init() {
         // register to events...
         api.registerEventHandler('on_ui_cpanel_before_close', myModule, 'onBeforeCpanelClose');
+		if (typeof ALTUI_revision=="string") {
+			bOnALTUI = true;
+		}
     }
 	
 	// Return HTML for settings tab
@@ -37,8 +46,9 @@ var SmartMeter = (function (api) {
 			var deviceObj = api.getDeviceObject(deviceID);
 			var deviceList = api.getListOfDevices();
 			var yesNo = [{'value':'0','label':'No'},{'value':'1','label':'Yes'}];
-			var logLevel = [{'value':'1','label':'Error'},{'value':'2','label':'Warning'},{'value':'8','label':'Info'},{'value':'10','label':'Debug'}];
-			var genIntervals = [{'value':'0','label':'Real-time'},{'value':'30','label':'30 seconds'},{'value':'60','label':'1 Minute'},{'value':'120','label':'2 minutes'},{'value':'180','label':'3 minutes'},{'value':'240','label':'4 minutes'},{'value':'300','label':'5 minutes'},{'value':'360','label':'6 minutes'},{'value':'420','label':'7 minutes'},{'value':'480','label':'8 minutes'},{'value':'540','label':'9 minutes'},{'value':'600','label':'10 minutes'}];
+			var logLevel = [{'value':'1','label':'Error'},{'value':'2','label':'Warning'},{'value':'8','label':'Info'},{'value':'11','label':'Debug'}];
+			var updateFreq = [{'value':'0','label':'Instant'},{'value':'10','label':'10 Seconds'},{'value':'30','label':'30 Seconds'},{'value':'60','label':'60 Seconds'},{'value':'300','label':'5 Minutes'}];
+			var genIntervals = [{'value':'0','label':'Real-time'},{'value':'30','label':'30 seconds'},{'value':'60','label':'1 Minute'},{'value':'120','label':'2 minutes'},{'value':'180','label':'3 minutes'},{'value':'240','label':'4 minutes'},{'value':'300','label':'5 minutes'},{'value':'360','label':'6 minutes'},{'value':'420','label':'7 minutes'},{'value':'480','label':'8 minutes'},{'value':'540','label':'9 minutes'},{'value':'600','label':'10 minutes'},{'value':'900','label':'15 minutes'},{'value':'1800','label':'30 minutes'}];
 			var genOffsets = [{'value':'0','label':'None'},{'value':'1','label':'10 seconds'},{'value':'2','label':'20 seconds'},{'value':'3','label':'30 seconds'},{'value':'4','label':'40 seconds'},{'value':'5','label':'50 seconds'},{'value':'6','label':'60 seconds'}];
 			var powerMeters = [];
 			var showExport = varGet(deviceID, 'ShowExport');
@@ -72,6 +82,7 @@ var SmartMeter = (function (api) {
 				'</div></div>'+
 				htmlAddPulldown(deviceID, 'Show Gas meter', 'ShowGas', yesNo)+
 				htmlAddPulldown(deviceID, 'Log level', 'LogLevel', logLevel)+
+				htmlAddPulldown(deviceID, 'Update Frequency', 'UpdateFrequency', updateFreq)+
 				htmlAddInput(deviceID, 'Syslog server IP Address:Port', 30, 'Syslog') + 
 				htmlAddButton(deviceID, 'UpdateSettings')+
 				'</div>'+
@@ -118,6 +129,7 @@ var SmartMeter = (function (api) {
 		varSet(deviceID,'GeneratorInterval',htmlGetPulldownSelection(deviceID, 'GeneratorInterval'));
 		varSet(deviceID,'GeneratorOffset',htmlGetPulldownSelection(deviceID, 'GeneratorOffset'));
 		varSet(deviceID,'ShowGas',htmlGetPulldownSelection(deviceID, 'ShowGas'));
+		varSet(deviceID,'UpdateFrequency',htmlGetPulldownSelection(deviceID, 'UpdateFrequency'));
 		varSet(deviceID,'LogLevel',htmlGetPulldownSelection(deviceID, 'LogLevel'));
 		varSet(deviceID,'Syslog',htmlGetElemVal(deviceID, 'Syslog'));
 		application.sendCommandSaveUserData(true);
@@ -153,9 +165,9 @@ var SmartMeter = (function (api) {
 		try {
 			var selVal = varGet(di, vr);
 			var html = '<div id="'+DIV_PREFIX+vr+di+'_div" class="clearfix labelInputContainer">'+
-				'<div class="pull-left inputLabel" style="width:280px;">'+lb+'</div>'+
+				'<div class="pull-left inputLabel '+((bOnALTUI) ? 'form-control form-control-sm form-control-plaintext' : '')+'" style="width:280px;">'+lb+'</div>'+
 				'<div class="pull-left customSelectBoxContainer">'+
-				'<select id="'+DIV_PREFIX+vr+di+'" class="customSelectBox">';
+				'<select id="'+DIV_PREFIX+vr+di+'" class="customSelectBox '+((bOnALTUI) ? 'form-control form-control-sm' : '')+'">';
 			for(var i=0;i<values.length;i++){
 				html += '<option value="'+values[i].value+'" '+((values[i].value==selVal)?'selected':'')+'>'+values[i].label+'</option>';
 			}
@@ -172,9 +184,9 @@ var SmartMeter = (function (api) {
 	function htmlAddInput(di, lb, si, vr, sid, df) {
 		var val = (typeof df != 'undefined') ? df : varGet(di,vr,sid);
 		var html = '<div id="'+DIV_PREFIX+vr+di+'_div" class="clearfix labelInputContainer" >'+
-					'<div class="pull-left inputLabel" style="width:280px;">'+lb+'</div>'+
+					'<div class="pull-left inputLabel '+((bOnALTUI) ? 'form-control form-control-sm form-control-plaintext' : '')+'" style="width:280px;">'+lb+'</div>'+
 					'<div class="pull-left">'+
-						'<input class="customInput" size="'+si+'" id="'+DIV_PREFIX+vr+di+'" type="text" value="'+val+'">'+
+						'<input class="customInput '+((bOnALTUI) ? 'altui-ui-input form-control form-control-sm' : '')+'" size="'+si+'" id="'+DIV_PREFIX+vr+di+'" type="text" value="'+val+'">'+
 					'</div>'+
 				'</div>';
 		return html;
@@ -182,7 +194,7 @@ var SmartMeter = (function (api) {
 	// Add a Save Settings button
 	function htmlAddButton(di, cb) {
 		html = '<div class="cpanelSaveBtnContainer labelInputContainer clearfix">'+	
-			'<input class="vBtn pull-right" type="button" value="Save Changes" onclick="'+MOD_PREFIX+'.'+cb+'(\''+di+'\');"></input>'+
+			'<input class="vBtn pull-right btn" type="button" value="Save Changes" onclick="'+MOD_PREFIX+'.'+cb+'(\''+di+'\');"></input>'+
 			'</div>';
 		return html;
 	}

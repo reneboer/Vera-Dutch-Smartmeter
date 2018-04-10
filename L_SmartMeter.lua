@@ -1,9 +1,16 @@
 --[==[
 	Module L_SmartMeter.lua
 	Written by R.Boer. 
-	V1.10 9 November 2017
+	V1.12 28 March 2017
 
- 	V1.10 Changes:
+ 	V1.12 Changes:
+		Updated for my now standard Var, Log and Utils API's.
+
+	V1.11 Changes:
+		Can reduce number of updates to reduce CPU load on Vera.
+		Nicer looking on ALTUI
+
+	V1.10 Changes:
 		Added support for Gas meter being on OBIS channel number 1-4.
 
 	V1.9 Changes:
@@ -45,9 +52,10 @@ See forum topic 		: http://forum.micasaverde.com/index.php/topic,10736.0.html
 and for this plug in : http://forum.micasaverde.com/index.php/topic,32081.0.html
 --]==]
 
-local socketLib = require("socket")
+local socketLib = require("socket")  -- Required for logAPI module.
+
 local PlugIn = {
-	Version = "1.10",
+	Version = "1.12",
 	DESCRIPTION = "Smart Meter", 
 	SM_SID = "urn:rboer-com:serviceId:SmartMeter1", 
 	EM_SID = "urn:micasaverde-com:serviceId:EnergyMetering1", 
@@ -56,8 +64,6 @@ local PlugIn = {
 	GE_XML = "D_SmartMeterGAS.xml",
 	THIS_DEVICE = 0,
 	Disabled = false,
-	syslog,
-	LogLevel = 3,
 	ShowMultiTariff = 0,
 	ShowExport = 0,
 	ShowGas = 0,
@@ -67,6 +73,10 @@ local PlugIn = {
 	GeneratorIsIdle = true,
 	GeneratorInd = 0,
 	GeneratorPrevLen = 0,
+	UpdateFrequency = 0,
+	MessageFrequency = 10,  -- One message per 10 seconds for DSMR V4 and below, each second for V5. Will be set based on version info from meter.
+	MessageNum = 1,
+	InMessage = false,
 	StartingUp = true,
 	indGasComming = false -- Some meter types split Gas reading over two lines
 }
@@ -75,7 +85,6 @@ local mapperData = {}
 
 -- Keys for Smart Meter values
 local mapKeys = {
-	Mt       = "/",
 	DSMRver  = "1-3:0.2.8",
 	Ta       = "0-0:96.14.0", 
 	EqID     = "0-0:96.1.1",
@@ -117,108 +126,255 @@ local PluginImages = { 'SmartMeter' }
 ---------------------------------------------------------------------------------------------
 -- Utility functions
 ---------------------------------------------------------------------------------------------
-local function log(text, level) 
-	local level = (level or 10)
-	if (PlugIn.LogLevel >= level) then
-		if (PlugIn.syslog) then
-			local slvl
-			if (level == 1) then slvl = 2 
-			elseif (level == 2) then slvl = 4 
-			elseif (level == 3) then slvl = 5 
-			elseif (level == 4) then slvl = 5 
-			elseif (level == 7) then slvl = 6 
-			elseif (level == 8) then slvl = 6 
-			else slvl = 7
-			end
-			PlugIn.syslog:send(text,slvl) 
+local log
+local var
+local utils
+
+
+-- API getting and setting variables and attributes from Vera more efficient.
+local function varAPI()
+	local def_sid, def_dev = '', 0
+	
+	local function _init(sid,dev)
+		def_sid = sid
+		def_dev = dev
+	end
+	
+	-- Get variable value
+	local function _get(name, sid, device)
+		local value = luup.variable_get(sid or def_sid, name, tonumber(device or def_dev))
+		return (value or '')
+	end
+
+	-- Get variable value as number type
+	local function _getnum(name, sid, device)
+		local value = luup.variable_get(sid or def_sid, name, tonumber(device or def_dev))
+		local num = tonumber(value,10)
+		return (num or 0)
+	end
+	
+	-- Set variable value
+	local function _set(name, value, sid, device)
+		local sid = sid or def_sid
+		local device = tonumber(device or def_dev)
+		local old = luup.variable_get(sid, name, device)
+		if (tostring(value) ~= tostring(old or '')) then 
+			luup.variable_set(sid, name, value, device)
+		end
+	end
+
+	-- create missing variable with default value or return existing
+	local function _default(name, default, sid, device)
+		local sid = sid or def_sid
+		local device = tonumber(device or def_dev)
+		local value = luup.variable_get(sid, name, device) 
+		if (not value) then
+			value = default	or ''
+			luup.variable_set(sid, name, value, device)	
+		end
+		return value
+	end
+	
+	-- Get an attribute value, try to return as number value if applicable
+	local function _getattr(name, device)
+		local value = luup.attr_get(name, tonumber(device or def_dev))
+		local nv = tonumber(value,10)
+		return (nv or value)
+	end
+
+	-- Set an attribute
+	local function _setattr(name, value, device)
+		luup.attr_set(name, value, tonumber(device or def_dev))
+	end
+	
+	return {
+		Get = _get,
+		Set = _set,
+		GetNumber = _getnum,
+		Default = _default,
+		GetAttribute = _getattr,
+		SetAttribute = _setattr,
+		Initialize = _init
+	}
+end
+
+-- API to handle basic logging and debug messaging. V2.0, requires socketlib
+local function logAPI()
+local _LLError = 1
+local _LLWarning = 2
+local _LLInfo = 8
+local _LLDebug = 11
+local def_level = _LLError
+local def_prefix = ''
+local def_debug = false
+local syslog
+
+	-- Syslog server support. From Netatmo plugin by akbooer
+	local function _init_syslog_server(ip_and_port, tag, hostname)
+		local sock = socketLib.udp()
+		local facility = 1    -- 'user'
+--		local emergency, alert, critical, error, warning, notice, info, debug = 0,1,2,3,4,5,6,7
+		local ip, port = ip_and_port:match "^(%d+%.%d+%.%d+%.%d+):(%d+)$"
+		if not ip or not port then return nil, "invalid IP or PORT" end
+		local serialNo = luup.pk_accesspoint
+		hostname = ("Vera-"..serialNo) or "Vera"
+		if not tag or tag == '' then tag = def_prefix end
+		tag = tag:gsub("[^%w]","") or "No TAG"  -- only alphanumeric, no spaces or other
+		local function send (self, content, severity)
+			content  = tostring (content)
+			severity = tonumber (severity) or 6
+			local priority = facility*8 + (severity%8)
+			local msg = ("<%d>%s %s %s: %s\n"):format (priority, os.date "%b %d %H:%M:%S", hostname, tag, content)
+			sock:send(msg) 
+		end
+		local ok, err = sock:setpeername(ip, port)
+		if ok then ok = {send = send} end
+		return ok, err
+	end
+
+	local function _update(level)
+		if level > 10 then
+			def_debug = true
+			def_level = 10
 		else
-			if (level == 10) then level = 50 end
-			luup.log(PlugIn.DESCRIPTION .. ": " .. text or "no text", (level or 50)) 
-		end	
-	end	
-end 
--- Get variable value.
--- Use SM_SID and THIS_DEVICE as defaults
-local function varGet(name, device, service)
-	local value = luup.variable_get(service or PlugIn.SM_SID, name, tonumber(device or PlugIn.THIS_DEVICE))
-	return (value or '')
-end
--- Update variable when value is different than current.
--- Use SM_SID and THIS_DEVICE as defaults
-local function varSet(name, value, device, service)
-	local service = service or PlugIn.SM_SID
-	local device = tonumber(device or PlugIn.THIS_DEVICE)
-	local old = varGet(name, device, service)
-	if (tostring(value) ~= old) then 
-		luup.variable_set(service, name, value, device)
-	end
-end
---get device Variables, creating with default value if non-existent
-local function defVar(name, default, device, service)
-	local service = service or PlugIn.SM_SID
-	local device = tonumber(device or PlugIn.THIS_DEVICE)
-	local value = luup.variable_get(service, name, device) 
-	if (not value) then
-		value = default	or ''							-- use default value or blank
-		luup.variable_set(service, name, value, device)	-- create missing variable with default value
-	end
-	return value
-end
--- Set a luup failure message
-local function setluupfailure(status,devID)
-	if (luup.version_major < 7) then status = status ~= 0 end        -- fix UI5 status type
-	luup.set_failure(status,devID)
-end
--- Syslog server support. From Netatmo plugin by akbooer
-local function syslog_server (ip_and_port, tag, hostname)
-	local sock = socketLib.udp()
-	local facility = 1    -- 'user'
-	local emergency, alert, critical, error, warning, notice, info, debug = 0,1,2,3,4,5,6,7
-	local ip, port = ip_and_port:match "^(%d+%.%d+%.%d+%.%d+):(%d+)$"
-	if not ip or not port then return nil, "invalid IP or PORT" end
-	local serialNo = luup.pk_accesspoint
-	hostname = ("Vera-"..serialNo) or "Vera"
-	if not tag or tag == '' then tag = PlugIn.DESCRIPTION end
-	tag = tag:gsub("[^%w]","") or PlugIn.DESCRIPTION  -- only alphanumeric, no spaces or other
-	local function send (self, content, severity)
-		content  = tostring (content)
-		severity = tonumber (severity) or info
-		local priority = facility*8 + (severity%8)
-		local msg = ("<%d>%s %s %s: %s\n"):format (priority, os.date "%b %d %H:%M:%S", hostname, tag, content)
-		sock:send (msg) 
-	end
-	local ok, err = sock:setpeername(ip, port)
-	if ok then ok = {send = send} end
-	return ok, err
-end
--- Luup Reload function for UI5,6 and 7
-local function luup_reload()
-	if (luup.version_major < 6) then 
-		luup.call_action("urn:micasaverde-com:serviceId:HomeAutomationGateway1", "Reload", {}, 0)
-	else
-		luup.reload()
-	end
-end
--- Create links for UI6 or UI7 image locations if missing.
-local function check_images(imageTable)
-	local imagePath =""
-	local sourcePath = "/www/cmh/skins/default/icons/"
-	if (luup.version_major >= 7) then
-		imagePath = "/www/cmh/skins/default/img/devices/device_states/"
-	elseif (luup.version_major == 6) then
-		imagePath = "/www/cmh_ui6/skins/default/icons/"
-	else
-		-- Default if for UI5, no idea what applies to older versions
-		imagePath = "/www/cmh/skins/default/icons/"
-	end
-	if (imagePath ~= sourcePath) then
-		for i = 1, #imageTable do
-			local source = sourcePath..imageTable[i]..".png"
-			local target = imagePath..imageTable[i]..".png"
-			os.execute(("[ ! -e %s ] && ln -s %s %s"):format(target, source, target))
+			def_debug = false
+			def_level = level
 		end
 	end	
-end
+
+	local function _init(prefix, level)
+		_update(level)
+		def_prefix = prefix
+	end	
+
+	local function _set_syslog(sever)
+		if (sever ~= '') then
+			_log('Starting UDP syslog service...',7) 
+			local err
+			syslog, err = _init_syslog_server(server, def_prefix)
+			if (not syslog) then _log('UDP syslog service error: '..err,2) end
+		else
+			syslog = nil
+		end	
+	end
+
+	local function _log(text, level) 
+		local level = (level or 10)
+		local msg = (text or "no text")
+		if (def_level >= level) then
+			if (syslog) then
+				local slvl
+				if (level == 1) then slvl = 2 
+				elseif (level == 2) then slvl = 4 
+				elseif (level == 3) then slvl = 5 
+				elseif (level == 4) then slvl = 5 
+				elseif (level == 7) then slvl = 6 
+				elseif (level == 8) then slvl = 6 
+				else slvl = 7
+				end
+				syslog:send(msg,slvl) 
+			else
+				if (level == 10) then level = 50 end
+				luup.log(def_prefix .. ": " .. msg:sub(1,80), (level or 50)) 
+			end	
+		end	
+	end	
+	
+	local function _debug(text)
+		if def_debug then
+			luup.log(def_prefix .. "_debug: " .. (text or "no text"), 50) 
+		end	
+	end
+	
+	return {
+		Initialize = _init,
+		LLError = _LLError,
+		LLWarning = _LLWarning,
+		LLInfo = _LLInfo,
+		LLDebug = _LLDebug,
+		Update = _update,
+		SetSyslog = _set_syslog,
+		Log = _log,
+		Debug = _debug
+	}
+end 
+
+-- API to handle some Util functions
+local function utilsAPI()
+local _UI5 = 5
+local _UI6 = 6
+local _UI7 = 7
+local _UI8 = 8
+local _OpenLuup = 99
+
+	local function _init()
+	end	
+
+	-- See what system we are running on, some Vera or OpenLuup
+	local function _getui()
+		if (luup.attr_get("openLuup",0) ~= nil) then
+			return _OpenLuup
+		else
+			return luup.version_major
+		end
+		return _UI7
+	end
+	
+	local function _getmemoryused()
+		return math.floor(collectgarbage "count")         -- app's own memory usage in kB
+	end
+	
+	local function _setluupfailure(status,devID)
+		if (luup.version_major < 7) then status = status ~= 0 end        -- fix UI5 status type
+		luup.set_failure(status,devID)
+	end
+
+	-- Luup Reload function for UI5,6 and 7
+	local function _luup_reload()
+		if (luup.version_major < 6) then 
+			luup.call_action("urn:micasaverde-com:serviceId:HomeAutomationGateway1", "Reload", {}, 0)
+		else
+			luup.reload()
+		end
+	end
+	
+	-- Create links for UI6 or UI7 image locations if missing.
+	local function _check_images(imageTable)
+		local imagePath =""
+		local sourcePath = "/www/cmh/skins/default/icons/"
+		if (luup.version_major >= 7) then
+			imagePath = "/www/cmh/skins/default/img/devices/device_states/"
+		elseif (luup.version_major == 6) then
+			imagePath = "/www/cmh_ui6/skins/default/icons/"
+		else
+			-- Default if for UI5, no idea what applies to older versions
+			imagePath = "/www/cmh/skins/default/icons/"
+		end
+		if (imagePath ~= sourcePath) then
+			for i = 1, #imageTable do
+				local source = sourcePath..imageTable[i]..".png"
+				local target = imagePath..imageTable[i]..".png"
+				os.execute(("[ ! -e %s ] && ln -s %s %s"):format(target, source, target))
+			end
+		end	
+	end
+	
+	return {
+		Initialize = _init,
+		ReloadLuup = _luup_reload,
+		CheckImages = _check_images,
+		GetMemoryUsed = _getmemoryused,
+		SetLuupFailure = _setluupfailure,
+		GetUI = _getui,
+		IsUI5 = _UI5,
+		IsUI6 = _UI6,
+		IsUI7 = _UI7,
+		IsUI8 = _UI8,
+		IsOpenLuup = _OpenLuup
+	}
+end 
+
+
 -- Fill mapperData table with an extra entry
 local function mapperRow(k,v,s,f,di)
 	mapperData[k] = {key = k, var = v, sid = s, dev = nil, val = 0, func = f, dir = (di or 1), desc = "", lab = "", xml = nil}
@@ -229,7 +385,7 @@ end
 
 -- Functions to handle Log values. They are all five numbers, number four is time stamp number
 local function LogGet(meter)
-	local lgstr = varGet(SM_LOG, meter.dev, meter.sid)
+	local lgstr = var.Get(SM_LOG, meter.sid, meter.dev)
 	local a,b,c,d,e = -1,0,0,0,0
 	if lgstr ~= "" then
 		a,b,c,d,e = lgstr:match("(%d+),(%d+),(%d+),(%d+),(%d+)")
@@ -244,7 +400,7 @@ local function LogSet(meter,val1,val2,val3,timest,val5)
 	lt.v3 = val3 or 0
 	lt.ts = timest or 0
 	lt.v5 = val5 or 0
-	varSet(SM_LOG, lt.v1..","..lt.v2..","..lt.v3..","..lt.ts..","..lt.v5, meter.dev, meter.sid)
+	var.Set(SM_LOG, lt.v1..","..lt.v2..","..lt.v3..","..lt.ts..","..lt.v5, meter.sid, meter.dev)
 end
 function SmartMeter_registerWithAltUI()
 	-- Register with ALTUI once it is ready
@@ -252,7 +408,7 @@ function SmartMeter_registerWithAltUI()
 	for k, v in pairs(luup.devices) do
 		if (v.device_type == "urn:schemas-upnp-org:device:altui:1") then
 			if luup.is_ready(k) then
-				log("Found ALTUI device "..k.." registering devices.")
+				log.Debug("Found ALTUI device "..k.." registering devices.")
 				local arguments = {}
 				arguments["newDeviceType"] = "urn:schemas-rboer-com:device:SmartMeter:1"
 				arguments["newScriptFile"] = "J_ALTUI_SmartMeter.js"	
@@ -268,7 +424,7 @@ function SmartMeter_registerWithAltUI()
 				arguments["newDeviceDrawFunc"] = "ALTUI_SmartMeterDisplays.drawSmartMeterGas"	
 				luup.call_action(ALTUI_SID, "RegisterPlugin", arguments, k)
 			else
-				log("ALTUI plugin is not yet ready, retry in a bit..")
+				log.Debug("ALTUI plugin is not yet ready, retry in a bit..")
 				luup.call_delay("SmartMeter_registerWithAltUI", 10, "", false)
 			end
 			break
@@ -280,8 +436,8 @@ end
 -- Functions to parse meter values from strings, must be before mapperData
 local function SetKWHDetails(meter, newVal)
 	local elem = meter
-	varSet(elem.var, math.floor(newVal), elem.dev, elem.sid)
-	varSet(elem.var .. FRC_PFX, newVal, elem.dev, elem.sid)
+	var.Set(elem.var, math.floor(newVal), elem.sid, elem.dev)
+	var.Set(elem.var .. FRC_PFX, newVal, elem.sid, elem.dev)
 end
 -- Set KWH values
 local function SetKWH(meter, dataStr)
@@ -325,8 +481,8 @@ local function SetKWH(meter, dataStr)
 		-- If Show sum on Whole House 
 		SetKWHDetails(whElem, impVal - expVal)
 		-- Set new matching KWH value on main plugin
-		varSet(elem.lab, math.floor(newVal))
-		varSet(whElem.lab, math.floor(impVal - expVal))
+		var.Set(elem.lab, math.floor(newVal))
+		var.Set(whElem.lab, math.floor(impVal - expVal))
 	end
 	return newVal
 end
@@ -345,7 +501,7 @@ local function SetWatts(meter, dataStr)
 	-- See if we have the import or export devices show as well
 	if (elem.dev ~= nil) then 
 		if (newVal ~= elem.val) then
-			varSet(elem.var, newVal, elem.dev, elem.sid)
+			var.Set(elem.var, newVal, elem.sid, elem.dev)
 			elem.val = newVal
 		end
 	end
@@ -356,7 +512,7 @@ local function SetWatts(meter, dataStr)
 	local dirVal = newVal * elem.dir
 	if (newVal ~= 0) and (dirVal ~= whElem.val) then
 		whElem.val = dirVal
-		varSet(elem.var, dirVal, whElem.dev, whElem.sid)
+		var.Set(elem.var, dirVal, whElem.sid, whElem.dev)
 	end
 	return newVal
 end
@@ -367,7 +523,7 @@ local function SetWattsGen(meter, dataStr)
 	-- See if we have the import or export devices show as well
 	if (elem.dev ~= nil) then 
 		if (newVal ~= elem.val) then
-			varSet(elem.var, newVal, elem.dev, elem.sid)
+			var.Set(elem.var, newVal, elem.sid, elem.dev)
 			elem.val = newVal
 		end
 	end
@@ -380,34 +536,34 @@ local function SetWattsGen(meter, dataStr)
 		local dirVal = newVal * elem.dir
 		-- If we have a real time power reader, add its wattage to the Whole House value
 		if (PlugIn.GeneratedPowerSource ~= "") then
-			local genWatts = tonumber(varGet("Watts", PlugIn.GeneratedPowerSource, PlugIn.EM_SID))
+			local genWatts = var.GetNumber("Watts", PlugIn.EM_SID, PlugIn.GeneratedPowerSource)
 			dirVal = dirVal + genWatts
 		end
 		if (newVal ~= 0) and (dirVal ~= whElem.val) then
 			whElem.val = dirVal
-			varSet(elem.var, dirVal, whElem.dev, whElem.sid)
+			var.Set(elem.var, dirVal, whElem.sid, whElem.dev)
 		end
 	else	
 		-- We use the value of some samples back to compensate for polling delay in solar
-		local whWH = BufferValue(math.floor(tonumber(varGet("KWH" .. FRC_PFX, whElem.dev, whElem.sid)) * 1000))
+		local whWH = BufferValue(math.floor(var.GetNumber("KWH" .. FRC_PFX, whElem.sid, whElem.dev) * 1000))
 		-- See if value from Generator has changed
 		local now = os.time()
-		local genWH = math.floor(tonumber(varGet("KWH", PlugIn.GeneratedPowerSource, PlugIn.EM_SID)) * 1000)
+		local genWH = math.floor(var.GetNumber("KWH", PlugIn.EM_SID, PlugIn.GeneratedPowerSource) * 1000)
 		local int = math.abs(os.difftime(now, whElem.rtlog.ts))
 		if (whElem.rtlog.v1 == -1) then
 			-- Is the first update after install
-			varSet("Watts", 0, whElem.dev, whElem.sid)
+			var.Set("Watts", 0, whElem.sid, whElem.dev)
 			LogSet(whElem, genWH, genWH, whWH, now, PlugIn.GeneratorInterval)
-			log("SetWatts Generator Initialize.",7)
+			log.Log("SetWatts Generator Initialize.",7)
 		else
 			if (genWH > whElem.rtlog.v1) then
 				local whWatts = math.floor(((genWH - whElem.rtlog.v1) + (whWH - whElem.rtlog.v3)) * 3600 / int)
 				if (type(whWatts) == "number") and (whWatts >= 0) and (whWatts < 50000) then 
-					log("SetWatts Generator Active: set House Watts to " .. whWatts.." over "..int.." seconds.",7)
-					varSet("Watts", whWatts, whElem.dev, whElem.sid)
+					log.Log("SetWatts Generator Active: set House Watts to " .. whWatts.." over "..int.." seconds.",7)
+					var.Set("Watts", whWatts, whElem.sid, whElem.dev)
 					LogSet(whElem, genWH, whElem.rtlog.v1, whWH, now, int)
 				else	
-					log("SetWatts Generator Active: Value for Watts out of range "..(whWatts or "nil").." over "..int.." seconds.",7)
+					log.Log("SetWatts Generator Active: Value for Watts out of range "..(whWatts or "nil").." over "..int.." seconds.",7)
 					LogSet(whElem, genWH, whElem.rtlog.v1, whElem.rtlog.v3, whElem.rtlog.ts, whElem.rtlog.v5)
 				end	
 				PlugIn.GeneratorIsIdle = false
@@ -421,14 +577,14 @@ local function SetWattsGen(meter, dataStr)
 				end	
 				-- See if we timed out or are initializing
 				if (timedOut) then				
-					local whWH = math.floor(tonumber(varGet("KWH" .. FRC_PFX, whElem.dev, whElem.sid)) * 1000)
+					local whWH = math.floor(var.GetNumber("KWH" .. FRC_PFX, whElem.sid, whElem.dev) * 1000)
 					local whWatts = math.floor((whWH - whElem.rtlog.v3) * 3600 / int)
 					if (type(whWatts) == "number" and whWatts >= 0 and whWatts < 50000) then 
-						log("SetWatts Generator Idle: set House Watts to " .. whWatts.." over "..int.." seconds.",7)
-						varSet("Watts", whWatts, whElem.dev, whElem.sid)
+						log.Log("SetWatts Generator Idle: set House Watts to " .. whWatts.." over "..int.." seconds.",7)
+						var.Set("Watts", whWatts, whElem.sid, whElem.dev)
 					else	
-						log("SetWatts Generator Idle: Value for Watts out of range " .. (whWatts or "nil").." over "..int.." seconds.",7)
-						varSet("Watts", newVal, whElem.dev, whElem.sid)
+						log.Log("SetWatts Generator Idle: Value for Watts out of range " .. (whWatts or "nil").." over "..int.." seconds.",7)
+						var.Set("Watts", newVal, whElem.sid, whElem.dev)
 					end	
 					LogSet(whElem, genWH, genWH, whWH, now, int)
 					PlugIn.GeneratorIsIdle = true
@@ -454,35 +610,35 @@ local function SetGas(meter, dataStr)
 	local newVal = tonumber(string.match(dataStr:match("(%d+.%d+*m3)"), "%d+.%d+"))
 	if (int ~= 0) then
 		if (newVal ~= elem.val) then
-			varSet(elem.var, math.floor(newVal), elem.dev, elem.sid)
-			varSet(elem.var .. FRC_PFX, newVal, elem.dev, elem.sid)
+			var.Set(elem.var, math.floor(newVal), elem.sid, elem.dev)
+			var.Set(elem.var .. FRC_PFX, newVal, elem.sid, elem.dev)
 			elem.val = newVal
 		end	
 		-- Calculate flow value
 		local newLiters = math.floor(newVal * 1000)
 		if (elem.rtlog.v1 == -1) then
 			-- Is the first update after install
-			varSet("Flow", 0, elem.dev, elem.sid)
+			var.Set("Flow", 0, elem.sid, elem.dev)
 			LogSet(elem, newLiters, newLiters, 0, convertedTimestamp, 0)
 		else
 			-- Calculate flow per hour value if it has changed.
 			if (newLiters ~= elem.rtlog.v1) then
 				local usage = math.floor((newLiters - elem.rtlog.v1) * 3600 / int)
 				if (type(usage) ~= "number") or (usage < 0) or (usage > 50000) then 
-					log("SetGas Flowing: untrusted number for flow " .. usage.." over "..int.." seconds. Setting to zero.",7)
+					log.Log("SetGas Flowing: untrusted number for flow " .. usage.." over "..int.." seconds. Setting to zero.",7)
 					usage = 0
 				else
-					log("SetGas Flowing: set l/h to " .. usage.." over "..int.." seconds.",7)
+					log.Log("SetGas Flowing: set l/h to " .. usage.." over "..int.." seconds.",7)
 				end	
-				varSet("Flow", usage, elem.dev, elem.sid)
+				var.Set("Flow", usage, elem.sid, elem.dev)
 				LogSet(elem, newLiters, elem.rtlog.v1, usage, convertedTimestamp, int)
 			else
 				-- No change, so no flow
-				varSet("Flow", 0, elem.dev, elem.sid)
+				var.Set("Flow", 0, elem.sid, elem.dev)
 				LogSet(elem, elem.rtlog.v1, elem.rtlog.v1, 0, convertedTimestamp, int)
 			end
 			-- Set new Gas value on main plugin
-			varSet(elem.lab, math.floor(newVal))
+			var.Set(elem.lab, math.floor(newVal))
 		end
 	end
 	return newVal
@@ -509,34 +665,34 @@ local function SetGas3(meter, dataStr)
 	local newVal = tonumber(dataStr:match("%d+.%d+"))
 	local int = math.abs(os.difftime(elem.tst, elem.rtlog.ts))
 	if (newVal ~= elem.val) then
-		varSet(elem.var, math.floor(newVal), elem.dev, elem.sid)
-		varSet(elem.var .. FRC_PFX, newVal, elem.dev, elem.sid)
+		var.Set(elem.var, math.floor(newVal), elem.sid, elem.dev)
+		var.Set(elem.var .. FRC_PFX, newVal, elem.sid, elem.dev)
 		elem.val = newVal
 	end	
 	-- Calculate flow value
 	local newLiters = math.floor(newVal * 1000)
 	if (elem.rtlog.v1 == -1) then
 		-- Is the first update after install
-		varSet("Flow", 0, elem.dev, elem.sid)
+		var.Set("Flow", 0, elem.sid, elem.dev)
 		LogSet(elem, newLiters, newLiters, 0, elem.tst, 0)
 	else
 		-- Calculate flow per hour value if it has changed.
 		if (newLiters > elem.rtlog.v1) then
 			local usage = math.floor((newLiters - elem.rtlog.v1) * 3600 / int)
 			if (type(usage) ~= "number") or (usage < 0) or (usage > 50000) then 
-				log("SetGas Flowing: untrusted number for flow " .. usage.." over "..int.." seconds. Setting to zero.",7)
+				log.Log("SetGas Flowing: untrusted number for flow " .. usage.." over "..int.." seconds. Setting to zero.",7)
 				usage = 0
 			else
-				log("SetGas Flowing: set l/h to " .. usage.." over "..int.." seconds.",7)
+				log.Log("SetGas Flowing: set l/h to " .. usage.." over "..int.." seconds.",7)
 			end	
-			varSet("Flow", usage, elem.dev, elem.sid)
+			var.Set("Flow", usage, elem.sid, elem.dev)
 			LogSet(elem, newLiters, elem.rtlog.v1, usage, elem.tst, int)
 		else	
-			varSet("Flow", 0, elem.dev, elem.sid)
+			var.Set("Flow", 0, elem.sid, elem.dev)
 			LogSet(elem, elem.rtlog.v1, elem.rtlog.v1, 0, elem.tst, int)
 		end
 		-- Set new Gas value on main plugin
-		varSet(elem.lab, math.floor(newVal))
+		var.Set(elem.lab, math.floor(newVal))
 	end
 	return newVal
 end
@@ -547,10 +703,10 @@ local function SetTariff(meter, dataStr)
 	if (newVal ~=  elem.val) then
 		-- Toggle watts to other device, set current to zero as it won't update after switch
 		elem.val = newVal
-		varSet(elem.var, newVal, elem.dev, elem.sid)
+		var.Set(elem.var, newVal, elem.sid, elem.dev)
 		if (PlugIn.ShowMultiTariff == 1) then 
 			local impElem = mapperData[mapKeys.ImpWatts]
-			varSet(impElem.var, 0, impElem.dev, impElem.sid)
+			var.Set(impElem.var, 0, impElem.sid, impElem.dev)
 			if (newVal == 1) then 
 				impElem.dev = mapperData[mapKeys.ImpT1].dev
 			elseif (newVal == 2) then 
@@ -558,7 +714,7 @@ local function SetTariff(meter, dataStr)
 			end
 			if (PlugIn.ShowExport == 1) then 
 				local expElem = mapperData[mapKeys.ExpWatts]
-				varSet(expElem.var, 0, expElem.dev, expElem.sid)
+				var.Set(expElem.var, 0, expElem.sid, expElem.dev)
 				if (newVal == 1) then 
 					expElem.dev = mapperData[mapKeys.ExpT1].dev
 				elseif (newVal == 2) then 
@@ -569,24 +725,18 @@ local function SetTariff(meter, dataStr)
 	end
 	return newVal
 end
--- Set meter description
-local function SetMeter(meter, dataStr) 
-	local elem = meter
-	if (dataStr ~= elem.val) then
-		varSet(elem.var, dataStr)
-		elem.val = dataStr
-	end
-	-- We only need to set this value once as it never changes after startup. So clear definition till next time.
-	mapperData[elem.key] = nil
-	return dataStr
-end
 -- Set meter P1 output version 
 local function SetVersion(meter, dataStr) 
 	local elem = meter
 	local newVal = dataStr:match("%d+")
 	if (newVal ~= elem.val) then
-		varSet(elem.var, newVal)
+		var.Set(elem.var, newVal)
 		elem.val = newVal
+		if (tonumber(newVal) >= 50) then -- I think version 5 and up show as 50. Need user to test.
+			PlugIn.MessageFrequency = 1 
+		else
+			PlugIn.MessageFrequency = 10
+		end
 	end
 	-- We only need to set this value once as it never changes after startup. So clear definition till next time.
 	mapperData[elem.key] = nil
@@ -597,7 +747,7 @@ local function SetLineVolt(meter, dataStr)
 	local elem = meter
 	local newVal = tonumber(dataStr:match("%d+.%d+"))
 	if (newVal ~= elem.val) then
-		varSet(elem.var, newVal)
+		var.Set(elem.var, newVal)
 		elem.val = newVal
 	end
 	return newVal
@@ -607,7 +757,7 @@ local function SetLineAmp(meter, dataStr)
 	local elem = meter
 	local newVal = tonumber(dataStr:match("%d+"))
 	if (newVal ~= elem.val) then
-		varSet(elem.var, newVal)
+		var.Set(elem.var, newVal)
 		elem.val = newVal
 	end
 	return newVal
@@ -618,11 +768,11 @@ local function SetLineWatts(meter, dataStr)
 	local newVal = math.floor(tonumber(dataStr:match("%d+.%d+")) * 1000)
 	if (newVal ~= elem.val) then
 		if (elem.dev ~= nil and newVal ~= 0) then 
-			varSet(elem.var, newVal * elem.dir, elem.dev, elem.sid) 
+			var.Set(elem.var, newVal * elem.dir, elem.sid, elem.dev) 
 		end
 		elem.val = newVal
 		-- Set new matching Watts value on main plugin
-		varSet(elem.lab, newVal)
+		var.Set(elem.lab, newVal)
 	end
 	return newVal
 end
@@ -635,7 +785,7 @@ local function SetMeterNum(meter, dataStr)
 		for i = 1, newVal:len(),2 do
 			resstr = resstr .. string.char(tonumber(newVal:sub(i,i+1),16))
 		end
-		varSet(elem.var, resstr)
+		var.Set(elem.var, resstr)
 		elem.val = newVal
 	end
 	-- We only need to set this value once as it never changes after startup. So clear definition till next time.
@@ -651,7 +801,7 @@ local function SetGasMeterNum(meter, dataStr)
 		for i = 1, newVal:len(),2 do
 			resstr = resstr .. string.char(tonumber(newVal:sub(i,i+1),16))
 		end
-		varSet(elem.var, resstr)
+		var.Set(elem.var, resstr)
 		elem.val = newVal
 	end
 	-- We only need to set this value once as it never changes after startup. So clear definition till next time.
@@ -671,16 +821,16 @@ local function findChild(meterID)
 	for k, v in pairs(luup.devices) do
 		if (v.device_num_parent == PlugIn.THIS_DEVICE and v.id == "SM_"..(elem.desc or "notvalid")) then
 			elem.dev = k
-			elem.val = defVar(elem.var, 0, elem.dev, elem.sid)
+			elem.val = var.Default(elem.var, 0, elem.sid, elem.dev)
 			-- Disable delete button
-			defVar("HideDeleteButton", 1, elem.dev, "urn:micasaverde-com:serviceId:HaDevice1")
+			var.Default("HideDeleteButton", 1, "urn:micasaverde-com:serviceId:HaDevice1", elem.dev)
 			return true
 		end
 	end
 
 	-- Dump a copy of the Global Module list for debugging purposes.
 	for k, v in pairs(luup.devices) do
-		log("Device Number: " .. k ..
+		log.Debug("Device Number: " .. k ..
 			" v.device_type: " .. tostring(v.device_type) ..
 			" v.device_num_parent: " .. tostring(v.device_num_parent) ..
 			" v.id: " .. tostring(v.id))
@@ -715,7 +865,7 @@ local function addMeterDevice(childDevices, meterID)
 	end	
 
 	-- Now add the new device to the tree
-	log("Creating child device id " .. meterName .. " (" .. childName .. ")")
+	log.Log("Creating child device id " .. meterName .. " (" .. childName .. ")")
 	luup.chdev.append(
 		    	PlugIn.THIS_DEVICE, -- parent (this device)
 		    	childDevices, 		-- pointer from above "start" call
@@ -731,16 +881,16 @@ end
 -- V1.2 Check how much memory the plug in uses
 function checkMemory()
 	local AppMemoryUsed =  math.floor(collectgarbage "count")         -- app's own memory usage in kB
-	varSet("AppMemoryUsed", AppMemoryUsed) 
+	var.Set("AppMemoryUsed", AppMemoryUsed) 
 	luup.call_delay("checkMemory", 600)
 end
 
 -- After a minute set flag so we are sure all dependent plug ins are stable.
 function finishSetup()
-	log("finishSetup")
+	log.Debug("finishSetup")
 	PlugIn.StartingUp = false
 	if (PlugIn.GeneratedPowerSource ~= "") then
-		local genWatts = tonumber(varGet("Watts", PlugIn.GeneratedPowerSource, PlugIn.EM_SID))
+		local genWatts = var.GetNumber("Watts", PlugIn.EM_SID, PlugIn.GeneratedPowerSource)
 		PlugIn.GeneratorIsIdle = (genWatts == 0)
 	end	
 	checkMemory()
@@ -749,57 +899,67 @@ end
 -- Start up plug in
 function SmartMeter_Init(lul_device)
 	PlugIn.THIS_DEVICE = lul_device
-	log("Starting "..PlugIn.DESCRIPTION.." version "..PlugIn.Version.." device: " .. tostring(PlugIn.THIS_DEVICE),3)
-	varSet("Version", PlugIn.Version)
-	local syslogInfo = defVar("Syslog")	-- send to syslog if IP address and Port 'XXX.XX.XX.XXX:YYY' (default port 514)
-	PlugIn.LogLevel = tonumber(defVar("LogLevel", 1))
+	-- start Utility API's
+	log = logAPI()
+	var = varAPI()
+	utils = utilsAPI()
+	var.Initialize(PlugIn.SM_SID, PlugIn.THIS_DEVICE)
+	
+	var.Default("LogLevel", log.LLError)
+	log.Initialize(PlugIn.DESCRIPTION, var.GetNumber("LogLevel"))
+	utils.Initialize()
+	
+	log.Log("Starting version "..PlugIn.Version.." device: " .. tostring(PlugIn.THIS_DEVICE),3)
+	var.Set("Version", PlugIn.Version)
 	-- For UI7 update the JS reference
-	local ui7Check = defVar("UI7Check", "false")
-	if (luup.version_branch == 1 and luup.version_major == 7 and ui7Check == "false") then
-		varSet("UI7Check", "true")
-		luup.attr_set("device_json", "D_SmartMeter_UI7.json", PlugIn.THIS_DEVICE)
-		luup_reload()
+	local ui7Check = var.Default("UI7Check", "false")
+	if (utils.GetUI() == utils.UI7 and ui7Check == "false") then
+		var.Set("UI7Check", "true")
+		var.SetAttribute("device_json", "D_SmartMeter_UI7.json", PlugIn.THIS_DEVICE)
+		utils.ReloadLuup()
 	end
 
 	-- See if user disabled plug-in 
 	local isDisabled = luup.attr_get("disabled", PlugIn.THIS_DEVICE)
 	if ((isDisabled == 1) or (isDisabled == "1")) then
-		log("Init: Plug-in version "..PlugIn.Version.." - DISABLED",2)
+		log.Log("Init: Plug-in version "..PlugIn.Version.." - DISABLED",2)
 		PlugIn.Disabled = true
-		varSet("MeterType", "Plug-in disabled")
+		var.Set("MeterType", "Plug-in disabled")
 	else
 		-- Check if connected via IP. Thanks to nlrb.
-		local ip = luup.attr_get("ip", PlugIn.THIS_DEVICE)
+		local ip = var.GetAttribute("ip", PlugIn.THIS_DEVICE)
 		if (ip ~= nil and ip ~= "") then
 			local ipaddr, port = string.match(ip, "(.-):(.*)")
 			if (port == nil) then
 				ipaddr = ip
 				port = 80
 			end
-			log("IP = " .. ipaddr .. ", port = " .. port)
+			log.Debug("IP = " .. ipaddr .. ", port = " .. port)
 			luup.io.open(PlugIn.THIS_DEVICE, ipaddr, tonumber(port))
 --			luup.io.intercept()
 		end
 		-- Check serial port connection
 		if (luup.io.is_connected(PlugIn.THIS_DEVICE) == false) then
-			setluupfailure(1, PlugIn.THIS_DEVICE)
+			utils.SetLuupFailure(1, PlugIn.THIS_DEVICE)
 			return false, "No IP:port or serial device specified. Visit the Serial Port configuration tab and choose how the device is attached.", string.format("%s[%d]", luup.devices[PlugIn.THIS_DEVICE].description, PlugIn.THIS_DEVICE)
 		else
-			log("Opening serial port")
+			log.Debug("Opening serial port")
 		end
 	end
 
 	-- Make sure icons are accessible when they should be. 
-	check_images(PluginImages)
+	utils.CheckImages(PluginImages)
 	-- Read settings.
-	PlugIn.ShowMultiTariff = tonumber(defVar("ShowMultiTariff",0)) -- When 1 show T1 and T2 separately
-	PlugIn.ShowExport = tonumber(defVar("ShowExport",0)) -- When 1 show Import and Export separately
-	PlugIn.ShowLines = tonumber(defVar("ShowLines",0)) -- When 1 show Import / Export phase Lines
-	PlugIn.UseGeneratedPower = tonumber(defVar("UseGeneratedPower",0)) -- When 1 use power generated (e.g. solar) in calculations
+	PlugIn.ShowMultiTariff = tonumber(var.Default("ShowMultiTariff",0)) -- When 1 show T1 and T2 separately
+	PlugIn.ShowExport = tonumber(var.Default("ShowExport",0)) -- When 1 show Import and Export separately
+	PlugIn.ShowLines = tonumber(var.Default("ShowLines",0)) -- When 1 show Import / Export phase Lines
+	PlugIn.UseGeneratedPower = tonumber(var.Default("UseGeneratedPower",0)) -- When 1 use power generated (e.g. solar) in calculations
+	PlugIn.UpdateFrequency = tonumber(var.Default("UpdateFrequency",0)) -- When to reduce the update frequency of variables
+	
 	if (PlugIn.ShowExport == 1) then
 		if (PlugIn.UseGeneratedPower == 1) then
-			PlugIn.GeneratedPowerSource = defVar("GeneratedPowerSource")
-			PlugIn.GeneratorInterval = tonumber(defVar("GeneratorInterval", 0))
+			PlugIn.GeneratedPowerSource = var.Default("GeneratedPowerSource")
+			PlugIn.GeneratorInterval = tonumber(var.Default("GeneratorInterval", 0))
 		else
 			PlugIn.GeneratorInterval = 0
 		end
@@ -807,9 +967,8 @@ function SmartMeter_Init(lul_device)
 		PlugIn.UseGeneratedPower = 0
 		PlugIn.GeneratorInterval = 0
 	end
-	PlugIn.ShowGas = tonumber(defVar("ShowGas",0)) -- When 1 show Import and Export separately
+	PlugIn.ShowGas = tonumber(var.Default("ShowGas",0)) -- When 1 show Import and Export separately
 	-- Set some of the default options we want to read
-	mapperRow(mapKeys.Mt, "MeterType", PlugIn.SM_SID, SetMeter)
 	mapperRow(mapKeys.DSMRver, "DSMRVersion", PlugIn.SM_SID, SetVersion)
 	mapperRow(mapKeys.Ta, "ActiveTariff", PlugIn.SM_SID, SetTariff)
 	mapperRow(mapKeys.EqID, "MeterNumber", PlugIn.SM_SID, SetMeterNum)
@@ -856,22 +1015,15 @@ function SmartMeter_Init(lul_device)
 	end
 
 	-- Setup child device and mapping details.
-	mapperData[mapKeys.Ta].val = defVar("ActiveTariff",1)
-	mapperData[mapKeys.Mt].val = defVar("MeterType", "Unknown")
-	PlugIn.GeneratorPrevLen = defVar("GeneratorOffset",0)
+	mapperData[mapKeys.Ta].val = var.Default("ActiveTariff",1)
+	PlugIn.GeneratorPrevLen = var.Default("GeneratorOffset",0)
 	if (PlugIn.ShowMultiTariff == 0 and PlugIn.ShowExport == 1) then 
 		-- Tweak child descriptions if no multi tariff
 		mapperData[mapKeys.ImpT1].desc = "Import"
 		mapperData[mapKeys.ExpT1].desc = "Export"
 	end
 	-- set up logging to syslog	
-	if (syslogInfo ~= '') then
-		log('Starting UDP syslog service...',7) 
-		local err
-		local syslogTag = luup.devices[PlugIn.THIS_DEVICE].description or PlugIn.DESCRIPTION 
-		PlugIn.syslog, err = syslog_server (syslogInfo, syslogTag)
-		if (not PlugIn.syslog) then log('UDP syslog service error: '..err,2) end
-	end
+	log.SetSyslog(var.Default("Syslog")) -- send to syslog if IP address and Port 'XXX.XX.XX.XXX:YYY' (default port 514)
 
 	-- Create the child devices the user wants
 	local childDevices = luup.chdev.start(PlugIn.THIS_DEVICE);  
@@ -898,7 +1050,6 @@ function SmartMeter_Init(lul_device)
 		return true, "Plug-in Disabled.", PlugIn.DESCRIPTION
 	end	
 
-	mapperData[mapKeys.Mt].dev = PlugIn.THIS_DEVICE
 	mapperData[mapKeys.Ta].dev = PlugIn.THIS_DEVICE
 	-- Pickup device IDs from names
 	findChild(mapKeys.WholeHouse)
@@ -944,7 +1095,7 @@ function SmartMeter_Init(lul_device)
 		mapperData[mapKeys.ImpWatts].dev = mapperData[mapKeys.ImpT1].dev
 		if (PlugIn.ShowExport == 1) then mapperData[mapKeys.ExpWatts].dev = mapperData[mapKeys.ExpT1].dev end
 	end
-	PlugIn.GeneratorPrevLen = tonumber(defVar("GeneratorSampleDelay",0)) / 10
+	PlugIn.GeneratorPrevLen = tonumber(var.Default("GeneratorSampleDelay",0)) / 10
 	if (PlugIn.GeneratorPrevLen > 0) then
 		for i = 1, PlugIn.GeneratorPrevLen do
 			GeneratorPrev[i] = 0
@@ -954,8 +1105,8 @@ function SmartMeter_Init(lul_device)
 	_G.mapperData = mapperData
 	luup.call_delay("finishSetup", 30)
 	luup.call_delay("SmartMeter_registerWithAltUI", 40, "", false)
-	log("SmartMeter has started...")
-	setluupfailure(0, PlugIn.THIS_DEVICE)
+	log.Debug("SmartMeter has started...")
+	utils.SetLuupFailure(0, PlugIn.THIS_DEVICE)
 	return true
 end
 
@@ -963,16 +1114,33 @@ end
 -- Data line has been received via serial. Process when ready
 ---------------------------------------------------------------------------------------------
 function SmartMeter_Incoming(data)
-    if (luup.is_ready(lul_device) == false or PlugIn.Disabled == true or PlugIn.StartingUp == true) then
+    if ((not data) or PlugIn.Disabled == true or PlugIn.StartingUp == true or luup.is_ready(lul_device) == false) then
         return
     end
-	
-	if (data:len() > 0) then
+	local chr = string.sub(data,1,1)
+	if chr == "/" then
+		if PlugIn.UpdateFrequency > 0 then
+			-- Skip messages until we hit requested update frequency
+			log.Log("MessageNum : "..PlugIn.MessageNum)
+			if PlugIn.MessageNum <= 1 then
+				var.Set("MeterType", string.sub(data,2))
+				PlugIn.InMessage = true
+				PlugIn.MessageNum = PlugIn.UpdateFrequency / PlugIn.MessageFrequency
+			else
+				PlugIn.MessageNum = PlugIn.MessageNum - 1
+			end
+		else
+			var.Set("MeterType", string.sub(data,2))
+			PlugIn.InMessage = true
+		end
+	elseif chr == "!" then
+		PlugIn.InMessage = false
+	elseif PlugIn.InMessage then
 		if (PlugIn.indGasComming) then
 			-- GAS on DSMR 2.x and 3.0 where GAS reading is on its own line after key line 0-1:24.3.0.
 			SetGas3("",data)
 			PlugIn.indGasComming = false
-		else
+		elseif chr ~= "" then
 			-- Get line key
 			local Key = data:match("[0-9%:%-%.%/]+")
 			if Key then
@@ -981,16 +1149,16 @@ function SmartMeter_Incoming(data)
 					-- Call Set function
 					local res, val = pcall(mapperData[Key].func, elem, data:sub(Key:len()+1))
 					if res then
-						log("Found key : "..Key.." for "..elem.var.." to set to value "..(val or 'nil'))
+						log.Debug("Found key : "..Key.." for "..elem.var.." to set to value "..(val or 'nil'))
 					else
-						log("Found key : "..Key.." for "..elem.var.." but failed to obtain value from " .. data:sub(Key:len()+1),2)
-						log("Err MSG: "..(val or 'nil'),2)
+						log.Log("Found key : "..Key.." for "..elem.var.." but failed to obtain value from " .. data:sub(Key:len()+1),2)
+						log.Log("Err MSG: "..(val or 'nil'),2)
 					end
 				else	
-					log("Not processing : "..(data or 'nil'))
+					log.Debug("Not processing : "..(data or 'nil'))
 				end
 			else
-				log("No key found in : "..(data or 'nil'))
+				log.Debug("No key found in : "..(data or 'nil'))
 			end
 		end	
 	end	
