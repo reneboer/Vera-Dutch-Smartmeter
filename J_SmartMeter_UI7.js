@@ -1,7 +1,10 @@
 //# sourceURL=J_SmartMeter_UI7.js
 // SmartMeter control UI for UI7
 // Written by R.Boer. 
-// V1.12 28 March 2018
+// V1.13 17 November 2018
+//
+// V1.13 Changes:
+//		Fix for saving settings on ALTUI.
 //
 // V1.12 Changes:
 //		Can reduce number of updates to reduce CPU load on Vera.
@@ -133,8 +136,8 @@ var SmartMeter = (function (api) {
 		varSet(deviceID,'LogLevel',htmlGetPulldownSelection(deviceID, 'LogLevel'));
 		varSet(deviceID,'Syslog',htmlGetElemVal(deviceID, 'Syslog'));
 		application.sendCommandSaveUserData(true);
-		doReload(deviceID);
 		setTimeout(function() {
+			doReload(deviceID);
 			showBusy(false);
 			try {
 				api.ui.showMessagePopup(Utils.getLangString("ui7_device_cpanel_details_saved_success","Device details saved successfully."),0);
