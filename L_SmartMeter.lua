@@ -1,9 +1,9 @@
 --[==[
 	Module L_SmartMeter.lua
 	Written by R.Boer. 
-	V1.13 11 October 2019
+	V1.14 11 October 2019
 
- 	V1.13 Changes:
+ 	V1.14 Changes:
 		Changes for icon handling for UI 7.30.
 
  	V1.12 Changes:
@@ -58,7 +58,7 @@ and for this plug in : http://forum.micasaverde.com/index.php/topic,32081.0.html
 local socketLib = require("socket")  -- Required for logAPI module.
 
 local PlugIn = {
-	Version = "1.13",
+	Version = "1.14",
 	DESCRIPTION = "Smart Meter", 
 	SM_SID = "urn:rboer-com:serviceId:SmartMeter1", 
 	EM_SID = "urn:micasaverde-com:serviceId:EnergyMetering1", 
