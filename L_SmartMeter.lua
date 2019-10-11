@@ -1,7 +1,10 @@
 --[==[
 	Module L_SmartMeter.lua
 	Written by R.Boer. 
-	V1.12 28 March 2017
+	V1.13 11 October 2019
+
+ 	V1.13 Changes:
+		Changes for icon handling for UI 7.30.
 
  	V1.12 Changes:
 		Updated for my now standard Var, Log and Utils API's.
@@ -55,7 +58,7 @@ and for this plug in : http://forum.micasaverde.com/index.php/topic,32081.0.html
 local socketLib = require("socket")  -- Required for logAPI module.
 
 local PlugIn = {
-	Version = "1.12",
+	Version = "1.13",
 	DESCRIPTION = "Smart Meter", 
 	SM_SID = "urn:rboer-com:serviceId:SmartMeter1", 
 	EM_SID = "urn:micasaverde-com:serviceId:EnergyMetering1", 
@@ -209,6 +212,7 @@ local def_prefix = ''
 local def_debug = false
 local syslog
 
+
 	-- Syslog server support. From Netatmo plugin by akbooer
 	local function _init_syslog_server(ip_and_port, tag, hostname)
 		local sock = socketLib.udp()
@@ -338,31 +342,9 @@ local _OpenLuup = 99
 		end
 	end
 	
-	-- Create links for UI6 or UI7 image locations if missing.
-	local function _check_images(imageTable)
-		local imagePath =""
-		local sourcePath = "/www/cmh/skins/default/icons/"
-		if (luup.version_major >= 7) then
-			imagePath = "/www/cmh/skins/default/img/devices/device_states/"
-		elseif (luup.version_major == 6) then
-			imagePath = "/www/cmh_ui6/skins/default/icons/"
-		else
-			-- Default if for UI5, no idea what applies to older versions
-			imagePath = "/www/cmh/skins/default/icons/"
-		end
-		if (imagePath ~= sourcePath) then
-			for i = 1, #imageTable do
-				local source = sourcePath..imageTable[i]..".png"
-				local target = imagePath..imageTable[i]..".png"
-				os.execute(("[ ! -e %s ] && ln -s %s %s"):format(target, source, target))
-			end
-		end	
-	end
-	
 	return {
 		Initialize = _init,
 		ReloadLuup = _luup_reload,
-		CheckImages = _check_images,
 		GetMemoryUsed = _getmemoryused,
 		SetLuupFailure = _setluupfailure,
 		GetUI = _getui,
@@ -947,8 +929,6 @@ function SmartMeter_Init(lul_device)
 		end
 	end
 
-	-- Make sure icons are accessible when they should be. 
-	utils.CheckImages(PluginImages)
 	-- Read settings.
 	PlugIn.ShowMultiTariff = tonumber(var.Default("ShowMultiTariff",0)) -- When 1 show T1 and T2 separately
 	PlugIn.ShowExport = tonumber(var.Default("ShowExport",0)) -- When 1 show Import and Export separately

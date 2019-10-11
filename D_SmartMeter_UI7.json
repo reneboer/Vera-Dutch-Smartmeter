@@ -1,5 +1,5 @@
 {
-	"default_icon": "SmartMeter.png",
+	"default_icon": "../../../icons/SmartMeter.png",
     "inScene": "1",
     "ToggleButton": 1,
 	"Tabs": [
