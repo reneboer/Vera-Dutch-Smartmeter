@@ -1,52 +1,42 @@
 --[==[
 	Module L_SmartMeter.lua
 	Written by R.Boer. 
-	V1.14 11 October 2019
+	V1.15 15 October 2019
 
+ 	V1.15 Changes:
+		Fix for UI7 check
  	V1.14 Changes:
 		Changes for icon handling for UI 7.30.
-
  	V1.12 Changes:
 		Updated for my now standard Var, Log and Utils API's.
-
 	V1.11 Changes:
 		Can reduce number of updates to reduce CPU load on Vera.
 		Nicer looking on ALTUI
-
 	V1.10 Changes:
 		Added support for Gas meter being on OBIS channel number 1-4.
-
 	V1.9 Changes:
 		Fix on LogGet function.
 		Removed some obsolete generic functions.
 		Can use local loop IP address on openLuup.
-
 	V1.8 Changes:
 		Fix for gas reading of DSMR 2.2 and 3.0 meters.
 		Fix for converting meter number with hex values.
 		Child devices wil not show the delete button.
-
 	V1.7 Changes:
 		More options to enable/disable to reduce CPU load on Vera when options are not in use.
 		Possible fix for unrealisting GasMeter flow calculations using the meter timestamp.
 		Support for disable attribute so you can disable the plugin without deinstallation. 
-
 	V1.6 Changes: 
 		Support for serial2IP connection. Thanks to nlrb. 
-
 	V1.5 Changes: 
 		Minor fixes. Added devices to show line power readings. Changed some settings to dropdowns.
 		Added a large number of notifications.
-
 	V1.4 Changes: 
 		ALTUI support. Added pulling Meter Numbers.
-	
 	V1.3 Changes: 
 		DSMR V5.0 support for each phase volts, amps and power reading.
-	
 	V1.2 Changes: 
 		Fix for ISK5 meter Gas reading, monitor plug in memory usage.
-	
 	V1.1 Changes: 
 		Spelling and a fix on app market.
 
@@ -58,7 +48,7 @@ and for this plug in : http://forum.micasaverde.com/index.php/topic,32081.0.html
 local socketLib = require("socket")  -- Required for logAPI module.
 
 local PlugIn = {
-	Version = "1.14",
+	Version = "1.15",
 	DESCRIPTION = "Smart Meter", 
 	SM_SID = "urn:rboer-com:serviceId:SmartMeter1", 
 	EM_SID = "urn:micasaverde-com:serviceId:EnergyMetering1", 
@@ -895,7 +885,7 @@ function SmartMeter_Init(lul_device)
 	var.Set("Version", PlugIn.Version)
 	-- For UI7 update the JS reference
 	local ui7Check = var.Default("UI7Check", "false")
-	if (utils.GetUI() == utils.UI7 and ui7Check == "false") then
+	if (utils.GetUI() == utils.IsUI7 and ui7Check == "false") then
 		var.Set("UI7Check", "true")
 		var.SetAttribute("device_json", "D_SmartMeter_UI7.json", PlugIn.THIS_DEVICE)
 		utils.ReloadLuup()
