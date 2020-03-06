@@ -1,8 +1,10 @@
 --[==[
 	Module L_SmartMeter.lua
 	Written by R.Boer. 
-	V1.15 15 October 2019
+	V1.16 5 March 2020
 
+ 	V1.16 Changes:
+		Added volts and amps to Line child devices. Removed KWH from them.
  	V1.15 Changes:
 		Fix for UI7 check
  	V1.14 Changes:
@@ -48,7 +50,7 @@ and for this plug in : http://forum.micasaverde.com/index.php/topic,32081.0.html
 local socketLib = require("socket")  -- Required for logAPI module.
 
 local PlugIn = {
-	Version = "1.15",
+	Version = "1.16",
 	DESCRIPTION = "Smart Meter", 
 	SM_SID = "urn:rboer-com:serviceId:SmartMeter1", 
 	EM_SID = "urn:micasaverde-com:serviceId:EnergyMetering1", 
@@ -715,22 +717,82 @@ local function SetVersion(meter, dataStr)
 	return newVal
 end
 -- Line voltage reading (V5.0 and up)
-local function SetLineVolt(meter, dataStr) 
+local function SetLine1Volt(meter, dataStr) 
 	local elem = meter
 	local newVal = tonumber(dataStr:match("%d+.%d+"))
 	if (newVal ~= elem.val) then
 		var.Set(elem.var, newVal)
 		elem.val = newVal
+		if (PlugIn.ShowLines == 1) then 
+			local lineElem = mapperData[mapKeys.L1ImpWatts]
+			var.Set("Volts", newVal, lineElem.sid, lineElem.dev)
+		end	
+	end
+	return newVal
+end
+local function SetLine2Volt(meter, dataStr) 
+	local elem = meter
+	local newVal = tonumber(dataStr:match("%d+.%d+"))
+	if (newVal ~= elem.val) then
+		var.Set(elem.var, newVal)
+		elem.val = newVal
+		if (PlugIn.ShowLines == 1) then 
+			local lineElem = mapperData[mapKeys.L2ImpWatts]
+			var.Set("Volts", newVal, lineElem.sid, lineElem.dev)
+		end	
+	end
+	return newVal
+end
+local function SetLine3Volt(meter, dataStr) 
+	local elem = meter
+	local newVal = tonumber(dataStr:match("%d+.%d+"))
+	if (newVal ~= elem.val) then
+		var.Set(elem.var, newVal)
+		elem.val = newVal
+		if (PlugIn.ShowLines == 1) then 
+			local lineElem = mapperData[mapKeys.L3ImpWatts]
+			var.Set("Volts", newVal, lineElem.sid, lineElem.dev)
+		end	
 	end
 	return newVal
 end
 -- Line Amps (V4.04 and up)
-local function SetLineAmp(meter, dataStr) 
+local function SetLine1Amp(meter, dataStr) 
 	local elem = meter
 	local newVal = tonumber(dataStr:match("%d+"))
 	if (newVal ~= elem.val) then
 		var.Set(elem.var, newVal)
 		elem.val = newVal
+		if (PlugIn.ShowLines == 1) then 
+			local lineElem = mapperData[mapKeys.L1ImpWatts]
+			var.Set("Amps", newVal, lineElem.sid, lineElem.dev)
+		end	
+	end
+	return newVal
+end
+local function SetLine2Amp(meter, dataStr) 
+	local elem = meter
+	local newVal = tonumber(dataStr:match("%d+"))
+	if (newVal ~= elem.val) then
+		var.Set(elem.var, newVal)
+		elem.val = newVal
+		if (PlugIn.ShowLines == 1) then 
+			local lineElem = mapperData[mapKeys.L2ImpWatts]
+			var.Set("Amps", newVal, lineElem.sid, lineElem.dev)
+		end	
+	end
+	return newVal
+end
+local function SetLine3Amp(meter, dataStr) 
+	local elem = meter
+	local newVal = tonumber(dataStr:match("%d+"))
+	if (newVal ~= elem.val) then
+		var.Set(elem.var, newVal)
+		elem.val = newVal
+		if (PlugIn.ShowLines == 1) then 
+			local lineElem = mapperData[mapKeys.L3ImpWatts]
+			var.Set("Amps", newVal, lineElem.sid, lineElem.dev)
+		end	
 	end
 	return newVal
 end
@@ -794,8 +856,15 @@ local function findChild(meterID)
 		if (v.device_num_parent == PlugIn.THIS_DEVICE and v.id == "SM_"..(elem.desc or "notvalid")) then
 			elem.dev = k
 			elem.val = var.Default(elem.var, 0, elem.sid, elem.dev)
-			-- Disable delete button
-			var.Default("HideDeleteButton", 1, "urn:micasaverde-com:serviceId:HaDevice1", elem.dev)
+			-- Remove kWh values from Line devices to clean up app display
+			if string.sub(v.id, 1, 7) == "SM_Line" then
+				local old = luup.variable_get(PlugIn.EM_SID, "KWH", k)
+				if old == "0" then
+					log.Debug("Removing KWH from device ".. v.id)
+					luup.variable_set(PlugIn.EM_SID, "KWH", nil, k)
+					luup.variable_set(PlugIn.EM_SID, "KWH".. FRC_PFX, nil, k)
+				end	
+			end
 			return true
 		end
 	end
@@ -821,8 +890,7 @@ local function addMeterDevice(childDevices, meterID)
 	if (elem.xml == PlugIn.PM_XML) then
 		init=elem.sid .. ",ActualUsage=1\n" .. 
 			 elem.sid .. ",Watts=0\n" .. 
-			 elem.sid .. ",KWH=0\n" ..
-			 elem.sid .. ",KWH" .. FRC_PFX .. "=0"
+			 "urn:micasaverde-com:serviceId:HaDevice1,HideDeleteButton=1"
 		-- For whole house set WholeHouse flag
 		if (meterID == WholeHouse) then
 			init=init .. "\n" .. elem.sid..",WholeHouse=1\n" .. elem.sid .. "," .. SM_LOG .. "=-1,0,0,0,0"
@@ -953,12 +1021,12 @@ function SmartMeter_Init(lul_device)
 	mapperRowChild(mapKeys.L1ImpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, 1, "Line 1", "L1ImpWatts", PlugIn.PM_XML)
 	mapperRowChild(mapKeys.L2ImpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, 1, "Line 2", "L2ImpWatts", PlugIn.PM_XML)
 	mapperRowChild(mapKeys.L3ImpWatts, "Watts", PlugIn.EM_SID, 0, SetLineWatts, 1, "Line 3", "L3ImpWatts", PlugIn.PM_XML)
-	mapperRow(mapKeys.L1Volt, "L1Volt", PlugIn.SM_SID, SetLineVolt)
-	mapperRow(mapKeys.L2Volt, "L2Volt", PlugIn.SM_SID, SetLineVolt)
-	mapperRow(mapKeys.L3Volt, "L3Volt", PlugIn.SM_SID, SetLineVolt)
-	mapperRow(mapKeys.L1Amp, "L1Ampere", PlugIn.SM_SID, SetLineAmp)
-	mapperRow(mapKeys.L2Amp, "L2Ampere", PlugIn.SM_SID, SetLineAmp)
-	mapperRow(mapKeys.L3Amp, "L3Ampere", PlugIn.SM_SID, SetLineAmp)
+	mapperRow(mapKeys.L1Volt, "L1Volt", PlugIn.SM_SID, SetLine1Volt)
+	mapperRow(mapKeys.L2Volt, "L2Volt", PlugIn.SM_SID, SetLine2Volt)
+	mapperRow(mapKeys.L3Volt, "L3Volt", PlugIn.SM_SID, SetLine3Volt)
+	mapperRow(mapKeys.L1Amp, "L1Ampere", PlugIn.SM_SID, SetLine1Amp)
+	mapperRow(mapKeys.L2Amp, "L2Ampere", PlugIn.SM_SID, SetLine2Amp)
+	mapperRow(mapKeys.L3Amp, "L3Ampere", PlugIn.SM_SID, SetLine3Amp)
 	if (PlugIn.ShowExport == 1) then
 		mapperRowChild(mapKeys.ExpT1, "KWH", PlugIn.EM_SID, -1, SetKWH, -1, "ExportT1", "ExportT1", PlugIn.PM_XML)
 		mapperRowChild(mapKeys.ExpT2, "KWH", PlugIn.EM_SID, -1, SetKWH, -1, "ExportT2", "ExportT2", PlugIn.PM_XML)
